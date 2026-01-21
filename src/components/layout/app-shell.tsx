@@ -13,7 +13,6 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   Home,
@@ -37,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -47,13 +47,11 @@ const navItems = [
 
 function AppSidebar() {
   const pathname = usePathname();
-  const { isMobile } = useSidebar();
 
   return (
     <Sidebar
       collapsible="icon"
       className="border-sidebar-border"
-      defaultOpen={!isMobile}
     >
       <SidebarHeader>
         <Logo />
@@ -150,8 +148,9 @@ function AppHeader() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={!isMobile}>
       <AppSidebar />
       <SidebarInset className="flex flex-col bg-background">
         <AppHeader />
