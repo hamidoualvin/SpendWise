@@ -62,7 +62,12 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -181,7 +186,8 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) =>
-                            date > new Date() || date < new Date('1900-01-01')
+                            (isClient && date > new Date()) ||
+                            date < new Date('1900-01-01')
                           }
                           initialFocus
                         />
