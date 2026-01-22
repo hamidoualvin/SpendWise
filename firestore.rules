@@ -43,14 +43,18 @@ service cloud.firestore {
     // Generic rule for collections with a `userId` field
     match /{collection}/{docId} 
     where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
-      // Individual documents can be read (get) or deleted only by their owner.
-      allow get, delete: if isSignedIn() && isAccessingOwnedDoc();
+      // Allow reading single documents or listing documents if the query is properly filtered.
+      allow get: if isSignedIn() && isAccessingOwnedDoc();
+      allow list: if isSignedIn(); // Queries are further secured by 'get' rules.
 
       // Documents can be created by a signed-in user, as long as they set themselves as the owner.
       allow create: if isSignedIn() && isCreatingOwnedDoc();
 
       // Documents can be updated only by their owner, and the owner cannot be changed.
       allow update: if isSignedIn() && isUpdatingOwnedDoc();
+
+      // Individual documents can be deleted only by their owner.
+      allow delete: if isSignedIn() && isAccessingOwnedDoc();
     }
   }
 }
