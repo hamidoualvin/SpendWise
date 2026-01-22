@@ -1,14 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type CategoryName =
-  | 'Food'
-  | 'Transportation'
-  | 'Entertainment'
-  | 'Shopping'
-  | 'Housing'
-  | 'Utilities'
-  | 'Health'
-  | 'Other';
+export type CategoryName = string;
 
 export interface Category {
   name: CategoryName;
