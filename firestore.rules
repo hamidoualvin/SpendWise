@@ -45,11 +45,6 @@ service cloud.firestore {
     where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
       // Individual documents can be read (get) or deleted only by their owner.
       allow get, delete: if isSignedIn() && isAccessingOwnedDoc();
-      
-      // Collection queries (list) are allowed if the user is signed in.
-      // The query itself MUST be constrained in the app code (e.g., where('userId', '==', auth.uid))
-      // to ensure it only requests documents the user is allowed to 'get'.
-      allow list: if isSignedIn();
 
       // Documents can be created by a signed-in user, as long as they set themselves as the owner.
       allow create: if isSignedIn() && isCreatingOwnedDoc();
