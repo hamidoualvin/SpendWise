@@ -10,8 +10,10 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  updateProfile,
 } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -55,6 +57,7 @@ interface AuthFormProps {
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [isGoogleLoading, setGoogleIsLoading] = React.useState(false);
@@ -73,7 +76,20 @@ export function AuthForm({ mode }: AuthFormProps) {
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        const user = userCredential.user;
+        const displayName = user.email!.split('@')[0];
+
+        // Update auth profile and create user document in Firestore
+        await updateProfile(user, { displayName });
+        
+        const userDocRef = doc(firestore, 'users', user.uid);
+        setDocumentNonBlocking(userDocRef, {
+          displayName: displayName,
+          email: user.email,
+          createdAt: serverTimestamp(),
+        }, {});
+
       } else {
         await signInWithEmailAndPassword(auth, data.email, data.password);
       }
@@ -94,7 +110,18 @@ export function AuthForm({ mode }: AuthFormProps) {
     setGoogleIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      // Create or update user document in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      setDocumentNonBlocking(userDocRef, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        createdAt: serverTimestamp(),
+      }, { merge: true }); // Merge to avoid overwriting on subsequent logins
+
       router.push('/');
     } catch (error: any) {
       console.error(error);
@@ -117,7 +144,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
-        <Logo className="mb-4 justify-center" />
+        <Logo />
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
@@ -223,5 +250,3 @@ export function AuthForm({ mode }: AuthFormProps) {
     </Card>
   );
 }
-
-    

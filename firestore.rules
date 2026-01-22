@@ -33,22 +33,29 @@ service cloud.firestore {
     // Collection Rules
     // ------------------------------------------------------------------------
     match /users/{userId} {
-      allow get, update, write: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn();
-      // Do not allow users to be deleted for now
-      allow delete: if false; 
-      allow list: if false; // Prevent listing all users.
+      // A user can read, create, and update their own document.
+      allow get, update, create: if isOwner(userId);
+      
+      // Do not allow users to be deleted for now, and no one can list all users.
+      allow delete, list: if false;
     }
 
     // Generic rule for collections with a `userId` field
     match /{collection}/{docId} 
     where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
-      allow read, delete: if isSignedIn() && isAccessingOwnedDoc();
+      // Individual documents can be read (get) or deleted only by their owner.
+      allow get, delete: if isSignedIn() && isAccessingOwnedDoc();
+      
+      // Collection queries (list) are allowed if the user is signed in.
+      // The query itself MUST be constrained in the app code (e.g., where('userId', '==', auth.uid))
+      // to ensure it only requests documents the user is allowed to 'get'.
+      allow list: if isSignedIn();
+
+      // Documents can be created by a signed-in user, as long as they set themselves as the owner.
       allow create: if isSignedIn() && isCreatingOwnedDoc();
+
+      // Documents can be updated only by their owner, and the owner cannot be changed.
       allow update: if isSignedIn() && isUpdatingOwnedDoc();
-      allow list: if isSignedIn(); // Covered by query constraints in the app
     }
   }
 }
-
-    
