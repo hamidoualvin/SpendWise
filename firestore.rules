@@ -3,55 +3,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ------------------------------------------------------------------------
-    // Helper Functions
-    // ------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // Incoming document
-    function isCreatingOwnedDoc() {
-      return isOwner(request.resource.data.userId);
-    }
-    
-    // Existing document
-    function isAccessingOwnedDoc() {
-      // Check for the existence of userId before accessing it.
-      return isSignedIn() && 'userId' in resource.data && isOwner(resource.data.userId);
-    }
-    
-    // Ensure owner is not changed on update
-    function isUpdatingOwnedDoc() {
-      return isAccessingOwnedDoc() && request.resource.data.userId == resource.data.userId;
-    }
-
-    // ------------------------------------------------------------------------
-    // Collection Rules
-    // ------------------------------------------------------------------------
+    // A user can read/write their own user document
     match /users/{userId} {
-      allow get, update, create: if isOwner(userId);
-      allow delete, list: if false;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    match /{collection}/{docId} 
-    where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
-      // Allow reading single documents or listing documents if the query is properly filtered.
-      allow get: if isAccessingOwnedDoc();
-      allow list: if isSignedIn(); // Queries are further secured by 'get' rules and indexes.
+    // Generic rules for all user-owned collections
+    match /{collection}/{docId}
+      where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
 
-      // Documents can be created by a signed-in user, as long as they set themselves as the owner.
-      allow create: if isSignedIn() && isCreatingOwnedDoc();
+        // READ:
+        // A user can read a document if they are the owner.
+        // For list operations, the query MUST include a `where('userId', '==', request.auth.uid)` clause.
+        allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
 
-      // Documents can be updated only by their owner, and the owner cannot be changed.
-      allow update: if isSignedIn() && isUpdatingOwnedDoc();
+        // CREATE:
+        // A user can create a document if they are signing it with their own userId.
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
 
-      // Individual documents can be deleted only by their owner.
-      allow delete: if isSignedIn() && isAccessingOwnedDoc();
+        // UPDATE:
+        // A user can update their own document, but they cannot change the userId.
+        allow update: if isSignedIn() && request.auth.uid == resource.data.userId
+                      && request.resource.data.userId == resource.data.userId;
+
+        // DELETE:
+        // A user can delete their own document.
+        allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
   }
 }
