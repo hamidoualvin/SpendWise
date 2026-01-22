@@ -21,7 +21,8 @@ service cloud.firestore {
     
     // Existing document
     function isAccessingOwnedDoc() {
-      return isOwner(resource.data.userId);
+      // Check for the existence of userId before accessing it.
+      return isSignedIn() && 'userId' in resource.data && isOwner(resource.data.userId);
     }
     
     // Ensure owner is not changed on update
@@ -33,19 +34,15 @@ service cloud.firestore {
     // Collection Rules
     // ------------------------------------------------------------------------
     match /users/{userId} {
-      // A user can read, create, and update their own document.
       allow get, update, create: if isOwner(userId);
-      
-      // Do not allow users to be deleted for now, and no one can list all users.
       allow delete, list: if false;
     }
 
-    // Generic rule for collections with a `userId` field
     match /{collection}/{docId} 
     where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
       // Allow reading single documents or listing documents if the query is properly filtered.
-      allow get: if isSignedIn() && isAccessingOwnedDoc();
-      allow list: if isSignedIn(); // Queries are further secured by 'get' rules.
+      allow get: if isAccessingOwnedDoc();
+      allow list: if isSignedIn(); // Queries are further secured by 'get' rules and indexes.
 
       // Documents can be created by a signed-in user, as long as they set themselves as the owner.
       allow create: if isSignedIn() && isCreatingOwnedDoc();
