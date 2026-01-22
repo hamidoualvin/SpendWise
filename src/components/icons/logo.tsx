@@ -1,9 +1,6 @@
 import { cn } from '@/lib/utils';
-import { useSidebar } from '@/components/ui/sidebar';
 
 export function Logo({ className }: { className?: string }) {
-  const { state } = useSidebar();
-
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <svg
