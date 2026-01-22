@@ -36,13 +36,15 @@ import { Input } from './ui/input';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { categories, categoryMap } from '@/lib/data';
 import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from './ui/calendar';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { useUser, useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, serverTimestamp, query, where } from 'firebase/firestore';
+import type { Category, Account, WithId } from '@/lib/types';
 
 const transactionFormSchema = z.object({
   type: z.enum(['income', 'expense'], {
@@ -51,8 +53,9 @@ const transactionFormSchema = z.object({
   amount: z.coerce
     .number({ required_error: 'Please enter an amount.' })
     .positive('Amount must be positive.'),
-  description: z.string().min(2, 'Description must be at least 2 characters.'),
-  category: z.string({ required_error: 'Please select a category.' }),
+  note: z.string().min(2, 'Description must be at least 2 characters.'),
+  categoryId: z.string({ required_error: 'Please select a category.' }),
+  accountId: z.string({ required_error: 'Please select an account.' }),
   date: z.date({
     required_error: 'A date is required.',
   }),
@@ -62,28 +65,56 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
-  const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
       type: 'expense',
-      description: '',
+      note: '',
       amount: '' as any,
+      date: new Date(),
     },
   });
+  
+  const type = form.watch('type');
 
-  function onSubmit(data: TransactionFormValues) {
-    // In a real app, you'd handle form submission here (e.g., API call)
-    console.log(data);
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+        collection(firestore, 'categories'), 
+        where('userId', '==', user.uid),
+        where('type', '==', type)
+    );
+  }, [firestore, user, type]);
+
+  const accountsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: categories } = useCollection<WithId<Category>>(categoriesQuery);
+  const { data: accounts } = useCollection<WithId<Account>>(accountsQuery);
+
+  async function onSubmit(data: TransactionFormValues) {
+    if (!user) return;
+    
+    const amountCents = Math.round(data.amount * 100);
+    const selectedAccount = accounts?.find(a => a.id === data.accountId);
+
+    addDocumentNonBlocking(collection(firestore, 'transactions'), {
+        userId: user.uid,
+        ...data,
+        amountCents: amountCents,
+        currency: selectedAccount?.currency || 'USD',
+        createdAt: serverTimestamp()
+    });
+
     toast({
       title: 'Transaction Added!',
-      description: `${data.description} for $${data.amount} has been successfully recorded.`,
+      description: `${data.note} for $${data.amount} has been successfully recorded.`,
     });
     setOpen(false);
     form.reset();
@@ -149,6 +180,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                           placeholder="0.00"
                           {...field}
                           className="pl-7"
+                          step="0.01"
                         />
                       </div>
                     </FormControl>
@@ -186,10 +218,6 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            isClient &&
-                            (date > new Date() || date < new Date('1900-01-01'))
-                          }
                           initialFocus
                         />
                       </PopoverContent>
@@ -201,7 +229,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
             </div>
             <FormField
               control={form.control}
-              name="description"
+              name="note"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
@@ -212,9 +240,36 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="accountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts?.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
@@ -228,8 +283,8 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.name} value={cat.name}>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -253,3 +308,5 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
     </Dialog>
   );
 }
+
+    

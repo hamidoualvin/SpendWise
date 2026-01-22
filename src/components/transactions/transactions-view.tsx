@@ -1,3 +1,6 @@
+'use client';
+
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -14,19 +17,47 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { type Transaction } from '@/lib/types';
 import { format } from 'date-fns';
 import { CategoryIcon } from '@/components/icons/category-icon';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Transaction, Category } from '@/lib/types';
+import { Skeleton } from '../ui/skeleton';
 
-interface TransactionsViewProps {
-  transactions: Transaction[];
-}
+export function TransactionsView() {
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-export function TransactionsView({ transactions }: TransactionsViewProps) {
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => b.date.getTime() - a.date.getTime()
-  );
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+  }, [firestore, user]);
+
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+
+  const categoryMap = React.useMemo(() => {
+    if (!categories) return new Map();
+    return new Map(categories.map((c) => [c.id, c]));
+  }, [categories]);
+
+  const getCategoryName = (categoryId: string) => {
+    return categoryMap.get(categoryId)?.name || 'N/A';
+  }
+  
+  const isLoading = isLoadingTransactions || isLoadingCategories;
+
 
   return (
     <Card>
@@ -45,22 +76,30 @@ export function TransactionsView({ transactions }: TransactionsViewProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTransactions.map((transaction) => (
+            {isLoading && Array.from({length: 10}).map((_, i) => (
+                <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                </TableRow>
+            ))}
+            {!isLoading && transactions?.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>
-                  <div className="font-medium">{transaction.description}</div>
+                  <div className="font-medium">{transaction.note}</div>
                   <div className="block text-sm text-muted-foreground sm:hidden">
-                    {transaction.category}
+                    {getCategoryName(transaction.categoryId)}
                   </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   <Badge variant="outline" className="flex w-fit items-center gap-2">
-                    <CategoryIcon category={transaction.category} className="h-3 w-3" />
-                    {transaction.category}
+                    <CategoryIcon categoryId={transaction.categoryId} categories={categories || []} className="h-3 w-3" />
+                    {getCategoryName(transaction.categoryId)}
                   </Badge>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {format(transaction.date, 'MMM d, yyyy')}
+                  {format(transaction.date.toDate(), 'MMM d, yyyy')}
                 </TableCell>
                 <TableCell
                   className={cn(
@@ -71,16 +110,22 @@ export function TransactionsView({ transactions }: TransactionsViewProps) {
                   )}
                 >
                   {transaction.type === 'income' ? '+' : '-'}
-                  {new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                  }).format(transaction.amount)}
+                  {formatCurrency(transaction.amountCents, transaction.currency)}
                 </TableCell>
               </TableRow>
             ))}
+            {!isLoading && transactions?.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No transactions yet.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
   );
 }
+
+    

@@ -2,12 +2,6 @@
 
 import * as React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import {
-  budgets as initialBudgets,
-  transactions,
-  categories as initialCategories,
-} from '@/lib/data';
-import type { CategoryName, Transaction, Budget, Category } from '@/lib/types';
 import { BudgetCard } from '@/components/budgets/budget-card';
 import {
   Card,
@@ -16,69 +10,80 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import {
   AddBudgetDialog,
-  iconMap,
-  IconName,
 } from '@/components/budgets/add-budget-dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Transaction, Budget, Category, WithId } from '@/lib/types';
+import { getMonth, getYear } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = React.useState<Budget[]>(initialBudgets);
-  const [categories, setCategories] =
-    React.useState<Category[]>(initialCategories);
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
+
+  const budgetsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'budgets'),
+      where('userId', '==', user.uid),
+      where('month', '==', currentMonth)
+    );
+  }, [firestore, user, currentMonth]);
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'transactions'),
+      where('userId', '==', user.uid)
+    );
+  }, [firestore, user]);
+  
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {
-    return new Map(categories.map((c) => [c.name, c]));
+    if (!categories) return new Map();
+    return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
 
-  const { toast } = useToast();
 
-  const handleAddBudget = (data: {
-    name: string;
-    limit: number;
-    icon: string;
-  }) => {
-    const IconComponent = iconMap[data.icon as IconName];
-    if (!IconComponent) {
-      console.error('Invalid icon selected');
-      toast({
-        title: 'Invalid Icon',
-        description: 'The selected icon is not valid.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const newCategory: Category = { name: data.name, icon: IconComponent };
-    const newBudget: Budget = { category: data.name, limit: data.limit };
-
-    setCategories((prev) => [...prev, newCategory]);
-    setBudgets((prev) => [...prev, newBudget]);
+  const getCategorySpending = (categoryId: string) => {
+    if (!transactions) return 0;
+    return transactions
+      .filter((t) => {
+        const transactionDate = t.date.toDate();
+        return (
+          t.type === 'expense' &&
+          t.categoryId === categoryId &&
+          getYear(transactionDate) === getYear(new Date()) &&
+          getMonth(transactionDate) === getMonth(new Date())
+        );
+      })
+      .reduce((sum, t) => sum + t.amountCents, 0);
   };
+  
+  const totalBudget = budgets?.reduce((sum, b) => sum + b.limitCents, 0) ?? 0;
+  
+  const totalSpent = transactions?.filter(t => {
+    const transactionDate = t.date.toDate();
+    return t.type === 'expense' && getYear(transactionDate) === getYear(new Date()) && getMonth(transactionDate) === getMonth(new Date());
+  }).reduce((sum, t) => sum + t.amountCents, 0) ?? 0;
 
-  const getCategorySpending = (
-    category: CategoryName,
-    allTransactions: Transaction[]
-  ) => {
-    return allTransactions
-      .filter((t) => t.type === 'expense' && t.category === category)
-      .reduce((sum, t) => sum + t.amount, 0);
-  };
-
-  const totalBudget = budgets.reduce((sum, b) => sum + b.limit, 0);
-  const totalSpent = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
   const totalRemaining = totalBudget - totalSpent;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  
+  const isLoading = isLoadingBudgets || isLoadingTransactions || isLoadingCategories;
 
   return (
     <AppShell>
@@ -93,8 +98,7 @@ export default function BudgetsPage() {
             </p>
           </div>
           <AddBudgetDialog
-            onAddBudget={handleAddBudget}
-            existingCategories={categories.map((c) => c.name)}
+            existingCategories={categories || []}
           />
         </div>
         <Card>
@@ -105,45 +109,58 @@ export default function BudgetsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 text-center md:grid-cols-3">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Budget Total
-              </p>
-              <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Total Dépensé
-              </p>
-              <p className="text-2xl font-bold text-destructive">
-                {formatCurrency(totalSpent)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Restant
-              </p>
-              <p
-                className={cn(
-                  'text-2xl font-bold',
-                  totalRemaining < 0 ? 'text-destructive' : 'text-green-600'
-                )}
-              >
-                {formatCurrency(totalRemaining)}
-              </p>
-            </div>
+             {isLoading ? (
+                <>
+                    <div><Skeleton className="h-6 w-1/2 mx-auto mb-1" /><Skeleton className="h-4 w-1/3 mx-auto" /></div>
+                    <div><Skeleton className="h-6 w-1/2 mx-auto mb-1" /><Skeleton className="h-4 w-1/3 mx-auto" /></div>
+                    <div><Skeleton className="h-6 w-1/2 mx-auto mb-1" /><Skeleton className="h-4 w-1/3 mx-auto" /></div>
+                </>
+             ) : (
+                <>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Budget Total
+                      </p>
+                      <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Total Dépensé
+                      </p>
+                      <p className="text-2xl font-bold text-destructive">
+                        {formatCurrency(totalSpent)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Restant
+                      </p>
+                      <p
+                        className={cn(
+                          'text-2xl font-bold',
+                          totalRemaining < 0 ? 'text-destructive' : 'text-green-600'
+                        )}
+                      >
+                        {formatCurrency(totalRemaining)}
+                      </p>
+                    </div>
+                </>
+             )}
           </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {budgets.map((budget) => {
-            const spent = getCategorySpending(budget.category, transactions);
+          {isLoading && Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}
+
+          {!isLoading && budgets?.map((budget) => {
+            const spent = getCategorySpending(budget.categoryId);
             return (
               <BudgetCard
-                key={budget.category}
+                key={budget.id}
                 budget={budget}
                 spent={spent}
                 categoryMap={categoryMap}
+                categories={categories || []}
               />
             );
           })}
@@ -152,3 +169,5 @@ export default function BudgetsPage() {
     </AppShell>
   );
 }
+
+    

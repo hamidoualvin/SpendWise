@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -8,21 +9,68 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { type Budget, type Transaction, type CategoryName } from '@/lib/types';
-import { categoryMap } from '@/lib/data';
 import { CategoryIcon } from '@/components/icons/category-icon';
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Transaction, Category, Budget } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils';
+import { getMonth, getYear } from 'date-fns';
+import { Skeleton } from '../ui/skeleton';
 
-interface BudgetStatusProps {
-  budgets: Budget[];
-  transactions: Transaction[];
-}
+export function BudgetStatus() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
-export function BudgetStatus({ budgets, transactions }: BudgetStatusProps) {
-  const getCategorySpending = (category: CategoryName) => {
+  const budgetsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'budgets'),
+      where('userId', '==', user.uid),
+      where('month', '==', currentMonth)
+    );
+  }, [firestore, user, currentMonth]);
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'transactions'),
+      where('userId', '==', user.uid)
+      // We'll filter by date locally for simplicity, but for large datasets, add a month filter here too.
+    );
+  }, [firestore, user]);
+
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+
+  const categoryMap = React.useMemo(() => {
+    if (!categories) return new Map();
+    return new Map(categories.map((c) => [c.id, c]));
+  }, [categories]);
+
+  const getCategorySpending = (categoryId: string) => {
+    if (!transactions) return 0;
     return transactions
-      .filter((t) => t.type === 'expense' && t.category === category)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t) => {
+        const transactionDate = t.date.toDate();
+        return (
+          t.type === 'expense' &&
+          t.categoryId === categoryId &&
+          getYear(transactionDate) === getYear(new Date()) &&
+          getMonth(transactionDate) === getMonth(new Date())
+        );
+      })
+      .reduce((sum, t) => sum + t.amountCents, 0);
   };
+  
+  const isLoading = isLoadingBudgets || isLoadingTransactions || isLoadingCategories;
 
   return (
     <Card className="h-full">
@@ -32,17 +80,29 @@ export function BudgetStatus({ budgets, transactions }: BudgetStatusProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {budgets.map((budget) => {
-            const spent = getCategorySpending(budget.category);
-            const progress = Math.min((spent / budget.limit) * 100, 100);
-            const isOverBudget = spent > budget.limit;
+          {isLoading && Array.from({length: 4}).map((_, i) => (
+            <div key={i} className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-32" />
+                </div>
+                <Skeleton className="h-2 w-full" />
+            </div>
+          ))}
+          {!isLoading && budgets?.map((budget) => {
+            const spent = getCategorySpending(budget.categoryId);
+            const progress = Math.min((spent / budget.limitCents) * 100, 100);
+            const isOverBudget = spent > budget.limitCents;
+            const category = categoryMap.get(budget.categoryId);
+
+            if (!category) return null;
 
             return (
-              <div key={budget.category} className="space-y-2">
+              <div key={budget.id} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CategoryIcon category={budget.category} />
-                    <span className="font-medium">{budget.category}</span>
+                    <CategoryIcon categoryId={budget.categoryId} categories={categories || []} />
+                    <span className="font-medium">{category.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <span
@@ -50,9 +110,9 @@ export function BudgetStatus({ budgets, transactions }: BudgetStatusProps) {
                         isOverBudget ? 'font-bold text-destructive' : ''
                       }
                     >
-                      ${spent.toFixed(2)}
+                      {formatCurrency(spent, budget.currency)}
                     </span>{' '}
-                    / ${budget.limit.toFixed(2)}
+                    / {formatCurrency(budget.limitCents, budget.currency)}
                   </div>
                 </div>
                 <Progress
@@ -62,8 +122,15 @@ export function BudgetStatus({ budgets, transactions }: BudgetStatusProps) {
               </div>
             );
           })}
+          {!isLoading && budgets?.length === 0 && (
+            <div className="text-center text-muted-foreground">
+                No budgets set for this month.
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
+
+    

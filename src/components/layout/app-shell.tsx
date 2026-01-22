@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -21,12 +22,13 @@ import {
   Settings,
   PlusCircle,
   Menu,
+  LogOut,
+  Loader2,
 } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { AddTransactionDialog } from '../add-transaction-dialog';
-import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   DropdownMenu,
@@ -37,6 +39,8 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser, useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -100,6 +104,19 @@ function AppSidebar() {
 function AppHeader() {
   const pathname = usePathname();
   const title = navItems.find((item) => item.href === pathname)?.label || 'Dashboard';
+  const { user } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/auth/sign-in');
+  };
+  
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
 
   return (
     <header className="flex h-16 w-full items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -126,17 +143,17 @@ function AppHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <Avatar className="h-10 w-10">
-                <AvatarImage src="https://picsum.photos/seed/1/100/100" alt="User Avatar" data-ai-hint="person face" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={user?.photoURL ?? undefined} alt="User Avatar" data-ai-hint="person face" />
+                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">John Doe</p>
+                <p className="text-sm font-medium leading-none">{user?.displayName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  john.doe@example.com
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -144,7 +161,10 @@ function AppHeader() {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -154,6 +174,33 @@ function AppHeader() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (!isUserLoading && !user && !pathname.startsWith('/auth')) {
+      router.push('/auth/sign-in');
+    }
+  }, [user, isUserLoading, router, pathname]);
+
+  if (isUserLoading && !pathname.startsWith('/auth')) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!user && !pathname.startsWith('/auth')) {
+    return null;
+  }
+
+  // Render auth pages without the app shell
+  if (pathname.startsWith('/auth')) {
+    return <>{children}</>;
+  }
+
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <AppSidebar />
@@ -164,3 +211,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

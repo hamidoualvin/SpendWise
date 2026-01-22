@@ -1,19 +1,62 @@
-import { categoryMap as defaultCategoryMap } from '@/lib/data';
-import type { Category, CategoryName } from '@/lib/types';
+'use client';
+
+import {
+  HelpCircle,
+  Utensils,
+  Car,
+  Ticket,
+  ShoppingBag,
+  Home,
+  Zap,
+  HeartPulse,
+  MoreHorizontal,
+  Gift,
+  BookOpen,
+  Plane,
+  PiggyBank,
+  Briefcase,
+} from 'lucide-react';
+import type { Category, WithId } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { HelpCircle } from 'lucide-react';
+import * as React from 'react';
+
+// Make sure this is kept in sync with add-budget-dialog
+export const iconMap = {
+  Utensils,
+  Car,
+  Ticket,
+  ShoppingBag,
+  Home,
+  Zap,
+  HeartPulse,
+  Gift,
+  BookOpen,
+  Plane,
+  PiggyBank,
+  Briefcase,
+  MoreHorizontal,
+  HelpCircle,
+};
+
+export type IconName = keyof typeof iconMap;
+
 
 interface CategoryIconProps {
-  category: CategoryName;
+  categoryId: string;
+  categories: WithId<Category>[];
   className?: string;
-  categoryMap?: Map<string, Category>;
 }
 
 export function CategoryIcon({
-  category,
+  categoryId,
+  categories,
   className,
-  categoryMap = defaultCategoryMap,
 }: CategoryIconProps) {
-  const Icon = categoryMap.get(category)?.icon || HelpCircle;
+  const category = categories.find(c => c.id === categoryId);
+  const iconName = category?.icon as IconName | undefined;
+
+  const Icon = (iconName && iconMap[iconName]) ? iconMap[iconName] : HelpCircle;
   return <Icon className={cn('h-4 w-4', className)} />;
 }
+
+    

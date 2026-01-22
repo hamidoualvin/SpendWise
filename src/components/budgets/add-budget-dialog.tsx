@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import * as React from 'react';
 import {
   Plus,
   Utensils,
@@ -42,6 +42,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useUser, useFirestore, addDocumentNonBlocking, useAuth } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
+import type { Category, WithId } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils';
+import { getMonth, getYear } from 'date-fns';
 
 export const iconMap = {
   Utensils,
@@ -69,19 +74,20 @@ const addBudgetFormSchema = z.object({
 type AddBudgetFormValues = z.infer<typeof addBudgetFormSchema>;
 
 interface AddBudgetDialogProps {
-  onAddBudget: (values: AddBudgetFormValues) => void;
-  existingCategories: string[];
+  existingCategories: WithId<Category>[];
 }
 
 export function AddBudgetDialog({
-  onAddBudget,
   existingCategories,
 }: AddBudgetDialogProps) {
   const [open, setOpen] = React.useState(false);
   const { toast } = useToast();
+  const { user } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const formSchemaWithCheck = addBudgetFormSchema.refine(
-    (data) => !existingCategories.includes(data.name),
+    (data) => !existingCategories.some(c => c.name.toLowerCase() === data.name.toLowerCase()),
     {
       message: 'Cette catégorie existe déjà.',
       path: ['name'],
@@ -97,14 +103,48 @@ export function AddBudgetDialog({
     },
   });
 
-  function onSubmit(data: AddBudgetFormValues) {
-    onAddBudget(data);
-    toast({
-      title: 'Catégorie de budget ajoutée !',
-      description: `La catégorie "${data.name}" avec une limite de ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(data.limit)} a été ajoutée.`,
-    });
-    setOpen(false);
-    form.reset();
+  async function onSubmit(data: AddBudgetFormValues) {
+    if (!user || !firestore) {
+        toast({ title: "Erreur", description: "Utilisateur non connecté.", variant: "destructive"});
+        return;
+    }
+
+    try {
+        const categoriesCol = collection(firestore, 'categories');
+        const newCategoryRef = await addDocumentNonBlocking(categoriesCol, {
+            userId: user.uid,
+            name: data.name,
+            icon: data.icon,
+            type: 'expense',
+            createdAt: serverTimestamp(),
+        });
+
+        const newCategoryId = newCategoryRef.id;
+        const currency = auth.currentUser?.photoURL || 'USD'; // A remplacer avec la devise de l'utilisateur
+        const limitCents = Math.round(data.limit * 100);
+        const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
+
+        const budgetsCol = collection(firestore, 'budgets');
+        await addDocumentNonBlocking(budgetsCol, {
+            userId: user.uid,
+            categoryId: newCategoryId,
+            month: currentMonth,
+            limitCents: limitCents,
+            currency: currency,
+            createdAt: serverTimestamp(),
+        });
+
+        toast({
+            title: 'Catégorie de budget ajoutée !',
+            description: `La catégorie "${data.name}" avec une limite de ${formatCurrency(limitCents, currency)} a été ajoutée.`,
+        });
+        setOpen(false);
+        form.reset();
+
+    } catch (e) {
+        console.error("Error adding budget: ", e);
+        toast({ title: "Erreur", description: "Impossible d'ajouter la catégorie.", variant: "destructive"});
+    }
   }
 
   return (
@@ -211,3 +251,5 @@ export function AddBudgetDialog({
     </Dialog>
   );
 }
+
+    

@@ -12,27 +12,44 @@ import {
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import { generateSpendingInsights, GenerateSpendingInsightsOutput } from '@/ai/flows/generate-spending-insights';
-import { type Transaction } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Transaction } from '@/lib/types';
 
-interface AiInsightsProps {
-  transactions: Transaction[];
-}
 
-export function AiInsights({ transactions }: AiInsightsProps) {
+export function AiInsights() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [result, setResult] = React.useState<GenerateSpendingInsightsOutput | null>(null);
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+  }, [firestore, user]);
+
+  const { data: transactions } = useCollection<Transaction>(transactionsQuery);
 
   const handleGenerateInsights = async () => {
+    if (!transactions) {
+        toast({ title: "No data", description: "There are no transactions to analyze."});
+        return;
+    }
     setIsLoading(true);
     setResult(null);
     try {
       const spendingData = JSON.stringify(
-        transactions.map(({ id, date, ...rest }) => ({
+        transactions.map(({ userId, accountId, categoryId, createdAt, ...rest }) => ({
           ...rest,
-          date: date.toISOString().split('T')[0],
+          date: rest.date.toDate().toISOString().split('T')[0],
         }))
       );
       const insights = await generateSpendingInsights({ spendingData });
@@ -96,7 +113,7 @@ export function AiInsights({ transactions }: AiInsightsProps) {
         )}
       </CardContent>
       <CardFooter>
-        <Button onClick={handleGenerateInsights} disabled={isLoading}>
+        <Button onClick={handleGenerateInsights} disabled={isLoading || !transactions || transactions.length === 0}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -110,3 +127,5 @@ export function AiInsights({ transactions }: AiInsightsProps) {
     </Card>
   );
 }
+
+    

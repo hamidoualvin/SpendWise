@@ -7,39 +7,35 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { type Budget, type Category } from '@/lib/types';
+import { type Budget, type Category, type WithId } from '@/lib/types';
 import { CategoryIcon } from '@/components/icons/category-icon';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface BudgetCardProps {
-  budget: Budget;
+  budget: WithId<Budget>;
   spent: number;
-  categoryMap: Map<string, Category>;
+  categoryMap: Map<string, WithId<Category>>;
+  categories: WithId<Category>[];
 }
 
-export function BudgetCard({ budget, spent, categoryMap }: BudgetCardProps) {
-  const progress = Math.min((spent / budget.limit) * 100, 100);
-  const remaining = budget.limit - spent;
-  const isOverBudget = spent > budget.limit;
+export function BudgetCard({ budget, spent, categoryMap, categories }: BudgetCardProps) {
+  const progress = Math.min((spent / budget.limitCents) * 100, 100);
+  const remaining = budget.limitCents - spent;
+  const isOverBudget = spent > budget.limitCents;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const category = categoryMap.get(budget.categoryId);
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <CategoryIcon
-            category={budget.category}
+            categoryId={budget.categoryId}
+            categories={categories}
             className="h-5 w-5"
-            categoryMap={categoryMap}
           />
           <CardTitle className="text-lg font-medium">
-            {budget.category}
+            {category?.name || '...'}
           </CardTitle>
         </div>
         <div
@@ -48,7 +44,7 @@ export function BudgetCard({ budget, spent, categoryMap }: BudgetCardProps) {
             isOverBudget && 'text-destructive'
           )}
         >
-          {formatCurrency(spent)}
+          {formatCurrency(spent, budget.currency)}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -57,16 +53,18 @@ export function BudgetCard({ budget, spent, categoryMap }: BudgetCardProps) {
           className={cn('h-2', isOverBudget && '[&>div]:bg-destructive')}
         />
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>{`Limite: ${formatCurrency(budget.limit)}`}</span>
+          <span>{`Limite: ${formatCurrency(budget.limitCents, budget.currency)}`}</span>
           {isOverBudget ? (
             <span className="font-medium text-destructive">
-              {`${formatCurrency(Math.abs(remaining))} au-dessus du budget`}
+              {`${formatCurrency(Math.abs(remaining), budget.currency)} au-dessus du budget`}
             </span>
           ) : (
-            <span>{`${formatCurrency(remaining)} restant`}</span>
+            <span>{`${formatCurrency(remaining, budget.currency)} restant`}</span>
           )}
         </div>
       </CardContent>
     </Card>
   );
 }
+
+    

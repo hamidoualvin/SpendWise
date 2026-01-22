@@ -1,12 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import { Skeleton } from '../ui/skeleton';
 
 interface SummaryCardProps {
   title: string;
-  value: number;
+  value?: number;
   icon: LucideIcon;
   iconColor?: string;
+  isLoading?: boolean;
 }
 
 export function SummaryCard({
@@ -14,11 +17,8 @@ export function SummaryCard({
   value,
   icon: Icon,
   iconColor,
+  isLoading,
 }: SummaryCardProps) {
-  const formattedValue = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(value);
 
   return (
     <Card>
@@ -27,8 +27,14 @@ export function SummaryCard({
         <Icon className={cn('h-5 w-5 text-muted-foreground', iconColor)} />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{formattedValue}</div>
+        {isLoading ? (
+            <Skeleton className="h-8 w-3/4" />
+        ) : (
+            <div className="text-2xl font-bold">{formatCurrency(value ?? 0)}</div>
+        )}
       </CardContent>
     </Card>
   );
 }
+
+    
