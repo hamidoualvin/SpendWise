@@ -41,7 +41,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
   { href: '/transactions', label: 'Transactions', icon: Briefcase },
-  { href: '#', label: 'Budgets', icon: Target },
+  { href: '/budgets', label: 'Budgets', icon: Target },
   { href: '#', label: 'Settings', icon: Settings },
 ];
 
