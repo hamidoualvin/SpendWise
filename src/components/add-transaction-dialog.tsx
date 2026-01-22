@@ -62,11 +62,11 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
-  const [today, setToday] = React.useState<Date | null>(null);
+  const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    setToday(new Date());
+    setIsClient(true);
   }, []);
 
   const form = useForm<TransactionFormValues>({
@@ -74,6 +74,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
     defaultValues: {
       type: 'expense',
       description: '',
+      amount: '' as any,
     },
   });
 
@@ -186,8 +187,8 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) =>
-                            (today && date > today) ||
-                            date < new Date('1900-01-01')
+                            isClient &&
+                            (date > new Date() || date < new Date('1900-01-01'))
                           }
                           initialFocus
                         />
