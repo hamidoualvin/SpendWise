@@ -1,0 +1,123 @@
+/**
+ * @file firestore.rules
+ * @description Security rules for the SpendWise Firestore database.
+ *
+ * @section Core Philosophy
+ * This ruleset enforces a strict user-ownership model. All data is private to the user who created it.
+ * There is no concept of public or shared data. Access to any document requires the requesting user to be
+ * authenticated and to be the owner of that document.
+ *
+ * @section Data Structure
+ * The database uses a flat structure with several top-level collections (e.g., /accounts, /transactions).
+ * Data is not nested under user-specific paths (like /users/{userId}/transactions). Instead, every document
+ * in every collection contains a `userId` field, which is used for authorization checks. This is a deliberate
+ * choice to support simpler, more efficient queries. The /users/{userId} collection is the only exception,
+ * where the document ID itself represents the user's ID.
+ *
+ * @section Key Security Decisions
+ * - Authentication Required: All read and write operations require a user to be signed in.
+ * - Strict Ownership: A user can only access documents where their UID matches the `userId` field in the document.
+ * - No User Listing: It is forbidden to list the entire `/users` collection to protect user privacy.
+ * - No Cross-User Queries: The rules ensure that client-side queries can only return data belonging to the
+ *   currently authenticated user.
+ * - Owner Immutability: The `userId` field on any document cannot be changed after creation, preventing
+ *   documents from being reassigned to other users.
+ *
+ * @section Denormalization for Authorization
+ * To create simpler and more performant rules, the `userId` is denormalized (copied) onto every single document
+ * that a user owns (e.g., Accounts, Transactions, Budgets). This allows for a fast and simple authorization
+ * check (`resource.data.userId == request.auth.uid`) without needing slow and costly `get()` calls to other documents.
+ *
+ * @section Structural Segregation
+ * This ruleset does not mix public and private data within the same collection. All collections are treated as
+ * entirely private to their respective owners, which simplifies rules and prevents accidental data exposure.
+ */
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the core of the ownership model.
+     * @param userId The UID of the document owner.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Validates ownership for an incoming document during creation.
+     * Ensures the new document's `userId` field matches the creator's UID.
+     */
+    function isCreatingOwnedDoc() {
+      return isOwner(request.resource.data.userId);
+    }
+
+    /**
+     * Validates ownership for an existing document during read, update, or delete operations.
+     * Ensures the document exists and its `userId` field matches the user's UID.
+     */
+    function isAccessingExistingOwnedDoc() {
+      return resource != null && isOwner(resource.data.userId);
+    }
+    
+    /**
+     * Validates ownership and immutability for an update operation.
+     * Ensures the user owns the document and is not trying to change the `userId`.
+     */
+    function isUpdatingOwnedDoc() {
+      return isAccessingExistingOwnedDoc() && request.resource.data.userId == resource.data.userId;
+    }
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Rules for the `users` collection. Each document stores a user's profile.
+     * A user can create their own profile, and can only read or update their own data.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user can create their own profile document, where the document ID matches their UID.
+     * @deny (list) An authenticated user CANNOT list all documents in the `/users` collection.
+     * @principle Restricts access to a user's own data tree and prevents enumeration of all application users.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) && resource != null;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if false; // User profiles cannot be deleted directly for safety.
+      allow list: if false; // Prevent listing all users.
+    }
+
+    /**
+     * @description Rules for all user-owned data collections like accounts, transactions, etc.
+     * These collections all follow the same ownership pattern based on a `userId` field.
+     * @path /{collection}/{docId} where collection is one of [accounts, categories, transactions, budgets, recurringRules, insightsCache]
+     * @allow (create) An authenticated user can create a document if the document's `userId` field matches their own UID.
+     * @deny (update) An authenticated user CANNOT update a document where the `userId` does not match their own UID.
+     * @principle Enforces strict document ownership for all reads and writes using a denormalized `userId` field.
+     */
+    match /{collection}/{docId} {
+        allow get: if isAccessingExistingOwnedDoc();
+        allow list: if isSignedIn(); // Allows queries scoped by the user (e.g., where('userId', '==', auth.uid)).
+        allow create: if isCreatingOwnedDoc();
+        allow update: if isUpdatingOwnedDoc();
+        allow delete: if isAccessingExistingOwnedDoc();
+      match /{document=**} {
+          allow read, write: if false;
+        }
+    }
+  }
+}

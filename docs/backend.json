@@ -1,0 +1,502 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the SpendWise application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the user's profile photo (optional).",
+          "format": "uri"
+        },
+        "defaultCurrency": {
+          "type": "string",
+          "description": "The user's default currency (e.g., 'USD', 'EUR')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "email",
+        "defaultCurrency",
+        "createdAt"
+      ]
+    },
+    "Account": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Account",
+      "type": "object",
+      "description": "Represents a user's account (e.g., 'Cash', 'Bank').",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Account entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Account)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the account."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the account."
+        },
+        "initialBalanceCents": {
+          "type": "number",
+          "description": "The initial balance of the account in cents."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "currency",
+        "initialBalanceCents",
+        "createdAt"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a spending category (e.g., 'Food', 'Transportation').",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the category ('expense' or 'income')."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon associated with the category (optional)."
+        },
+        "color": {
+          "type": "string",
+          "description": "Color associated with the category (optional)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the category was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "type",
+        "createdAt"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a financial transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Transaction)"
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Reference to Account. (Relationship: Account 1:N Transaction)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Transaction)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of transaction ('expense' or 'income')."
+        },
+        "amountCents": {
+          "type": "number",
+          "description": "The transaction amount in cents."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the transaction."
+        },
+        "date": {
+          "type": "string",
+          "description": "The effective date of the transaction.",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional note for the transaction."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Optional array of tags associated with the transaction.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "description": "The source of the transaction ('manual', 'import', 'recurring') (optional)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the transaction was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "accountId",
+        "categoryId",
+        "type",
+        "amountCents",
+        "currency",
+        "date",
+        "createdAt"
+      ]
+    },
+    "Budget": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Budget",
+      "type": "object",
+      "description": "Represents a monthly budget goal for a specific category.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Budget entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Budget)"
+        },
+        "month": {
+          "type": "string",
+          "description": "The month for the budget (YYYY-MM)."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Budget)"
+        },
+        "limitCents": {
+          "type": "number",
+          "description": "The budget limit in cents."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the budget."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the budget was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "month",
+        "categoryId",
+        "limitCents",
+        "currency",
+        "createdAt"
+      ]
+    },
+    "RecurringRule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RecurringRule",
+      "type": "object",
+      "description": "Represents a rule for recurring transactions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RecurringRule entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N RecurringRule)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of transaction ('expense' or 'income')."
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Reference to Account. (Relationship: Account 1:N RecurringRule)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N RecurringRule)"
+        },
+        "amountCents": {
+          "type": "number",
+          "description": "The transaction amount in cents."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the transaction."
+        },
+        "frequency": {
+          "type": "string",
+          "description": "The frequency of the recurring rule ('weekly', 'monthly', 'yearly')."
+        },
+        "dayOfMonth": {
+          "type": "number",
+          "description": "The day of the month for monthly recurring rules (optional)."
+        },
+        "dayOfWeek": {
+          "type": "number",
+          "description": "The day of the week for weekly recurring rules (optional)."
+        },
+        "nextRunAt": {
+          "type": "string",
+          "description": "Timestamp indicating the next run time for the rule.",
+          "format": "date-time"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Indicates whether the recurring rule is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the recurring rule was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "type",
+        "accountId",
+        "categoryId",
+        "amountCents",
+        "currency",
+        "frequency",
+        "nextRunAt",
+        "active",
+        "createdAt"
+      ]
+    },
+    "InsightsCache": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InsightsCache",
+      "type": "object",
+      "description": "Represents a cache of generated spending insights.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InsightsCache entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N InsightsCache)"
+        },
+        "period": {
+          "type": "string",
+          "description": "The period for which the insights were generated (e.g., 'YYYY-MM', 'last_30_days')."
+        },
+        "summary": {
+          "type": "string",
+          "description": "A summary of the spending insights."
+        },
+        "bullets": {
+          "type": "array",
+          "description": "An array of bullet points highlighting key insights.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metrics": {
+          "type": "string",
+          "description": "A map of key metrics related to the insights (e.g., 'topCategory', 'spendTotalCents')."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the insights were generated.",
+          "format": "date-time"
+        },
+        "ttlExpiresAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the cache entry should expire.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "period",
+        "summary",
+        "bullets",
+        "metrics",
+        "generatedAt",
+        "ttlExpiresAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Only the authenticated user can read or write their own document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/accounts/{accountId}",
+        "definition": {
+          "entityName": "Account",
+          "schema": {
+            "$ref": "#/backend/entities/Account"
+          },
+          "description": "Stores user account information. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "accountId",
+              "description": "The unique identifier of the account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores user-defined categories. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier of the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transaction data. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "The unique identifier of the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/budgets/{budgetId}",
+        "definition": {
+          "entityName": "Budget",
+          "schema": {
+            "$ref": "#/backend/entities/Budget"
+          },
+          "description": "Stores budget information. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "budgetId",
+              "description": "The unique identifier of the budget."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/recurringRules/{ruleId}",
+        "definition": {
+          "entityName": "RecurringRule",
+          "schema": {
+            "$ref": "#/backend/entities/RecurringRule"
+          },
+          "description": "Stores recurring rule definitions. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "ruleId",
+              "description": "The unique identifier of the recurring rule."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/insightsCache/{cacheId}",
+        "definition": {
+          "entityName": "InsightsCache",
+          "schema": {
+            "$ref": "#/backend/entities/InsightsCache"
+          },
+          "description": "Stores cached insights. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "cacheId",
+              "description": "The unique identifier of the insights cache entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure data isolation and security for each user, adhering to the principle of 'Authorization Independence' by denormalizing the `userId` into each document. This avoids the need for `get()` calls in security rules, simplifying the rules and making them more robust. The design uses hierarchical paths for user-owned data, making security rules efficient. Segregation is achieved by isolating user-specific data into dedicated collections (`/users/{userId}/...`).  QAPs are supported by ensuring all documents within a collection share the same security posture, making list operations secure.\n\nEach collection isolates data per user, ensuring multi-tenancy. User-specific data is structured under `/users/{userId}` for core user information.  Other collections such as `accounts`, `categories`, `transactions`, `budgets`, `recurringRules`, and `insightsCache` are structured to include a `userId` field to guarantee data isolation and allow for efficient querying within a user's scope.  Indexes are recommended on `transactions` for `(userId, date desc)`, `(userId, categoryId, date desc)`, and `(userId, accountId, date desc)` to optimize dashboard queries and filtered views, preventing collection scans.\n\nThe `insightsCache` collection stores pre-computed insights for each user, period, and is designed to minimize the computational load for generating insights on demand. The `ttlExpiresAt` field is used to invalidate the cache after a specified period, ensuring the insights remain relatively up-to-date."
+  }
+}
