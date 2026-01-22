@@ -92,6 +92,8 @@ export function AddBudgetDialog({
     resolver: zodResolver(formSchemaWithCheck),
     defaultValues: {
       name: '',
+      limit: NaN,
+      icon: '',
     },
   });
 
