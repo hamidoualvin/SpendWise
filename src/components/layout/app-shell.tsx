@@ -40,7 +40,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
-  { href: '#', label: 'Transactions', icon: Briefcase },
+  { href: '/transactions', label: 'Transactions', icon: Briefcase },
   { href: '#', label: 'Budgets', icon: Target },
   { href: '#', label: 'Settings', icon: Settings },
 ];
@@ -98,6 +98,9 @@ function AppSidebar() {
 }
 
 function AppHeader() {
+  const pathname = usePathname();
+  const title = navItems.find((item) => item.href === pathname)?.label || 'Dashboard';
+
   return (
     <header className="flex h-16 w-full items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
       <div className="flex items-center gap-2">
@@ -105,7 +108,7 @@ function AppHeader() {
           <Menu />
         </SidebarTrigger>
         <h1 className="font-headline text-lg font-semibold tracking-tight">
-          Dashboard
+          {title}
         </h1>
       </div>
       <div className="flex items-center gap-4">
