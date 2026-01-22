@@ -112,14 +112,16 @@ function AppHeader() {
         </h1>
       </div>
       <div className="flex items-center gap-4">
-        <div className="hidden md:block">
-          <AddTransactionDialog>
-            <Button>
-              <PlusCircle className="mr-2" />
-              Add Transaction
-            </Button>
-          </AddTransactionDialog>
-        </div>
+        {pathname !== '/budgets' && (
+          <div className="hidden md:block">
+            <AddTransactionDialog>
+              <Button>
+                <PlusCircle className="mr-2" />
+                Add Transaction
+              </Button>
+            </AddTransactionDialog>
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
