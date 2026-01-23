@@ -23,31 +23,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function BudgetsPage() {
-  const { user } = useUser();
+  const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
   const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
   const budgetsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(
       collection(firestore, 'budgets'),
       where('userId', '==', user.uid),
       where('month', '==', currentMonth)
     );
-  }, [firestore, user?.uid, currentMonth]);
+  }, [firestore, user?.uid, currentMonth, isUserLoadingAuth]);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid)
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoadingAuth]);
   
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoadingAuth]);
 
   const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
@@ -83,7 +83,7 @@ export default function BudgetsPage() {
 
   const totalRemaining = totalBudget - totalSpent;
   
-  const isLoading = isLoadingBudgets || isLoadingTransactions || isLoadingCategories;
+  const isLoading = isUserLoadingAuth || isLoadingBudgets || isLoadingTransactions || isLoadingCategories;
 
   return (
     <AppShell>

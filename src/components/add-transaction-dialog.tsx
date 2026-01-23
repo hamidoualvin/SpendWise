@@ -66,7 +66,7 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const form = useForm<TransactionFormValues>({
@@ -82,18 +82,18 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
   const type = form.watch('type');
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoading || !user?.uid) return null;
     return query(
         collection(firestore, 'categories'), 
         where('userId', '==', user.uid),
         where('type', '==', type)
     );
-  }, [firestore, user?.uid, type]);
+  }, [firestore, user?.uid, type, isUserLoading]);
 
   const accountsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoading || !user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoading]);
 
   const { data: categories } = useCollection<WithId<Category>>(categoriesQuery);
   const { data: accounts } = useCollection<WithId<Account>>(accountsQuery);

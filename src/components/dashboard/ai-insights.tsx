@@ -24,17 +24,17 @@ export function AiInsights() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [result, setResult] = React.useState<GenerateSpendingInsightsOutput | null>(null);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoadingAuth]);
 
   const { data: transactions } = useCollection<Transaction>(transactionsQuery);
 

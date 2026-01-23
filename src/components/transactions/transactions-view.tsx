@@ -27,22 +27,22 @@ import type { Transaction, Category, WithId } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 
 export function TransactionsView() {
-  const { user } = useUser();
+  const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoadingAuth]);
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isUserLoadingAuth]);
 
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
   const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
@@ -56,7 +56,7 @@ export function TransactionsView() {
     return categoryMap.get(categoryId)?.name || 'N/A';
   }
   
-  const isLoading = isLoadingTransactions || isLoadingCategories;
+  const isLoading = isUserLoadingAuth || isLoadingTransactions || isLoadingCategories;
 
 
   return (

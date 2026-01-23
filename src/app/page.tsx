@@ -15,18 +15,18 @@ import type { Account, Transaction } from '@/lib/types';
 import { startOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
 
   const accountsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [user?.uid, firestore]);
+  }, [user?.uid, firestore, isUserLoadingAuth]);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'transactions'), where('userId', '==', user.uid));
-  }, [user?.uid, firestore]);
+  }, [user?.uid, firestore, isUserLoadingAuth]);
   
   const { data: accounts, isLoading: isLoadingAccounts } = useCollection<Account>(accountsQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     return { totalBalance, totalIncome, totalExpenses };
   }, [accounts, transactions]);
 
-  const isLoadingSummary = isLoadingAccounts || isLoadingTransactions;
+  const isLoadingSummary = isUserLoadingAuth || isLoadingAccounts || isLoadingTransactions;
 
   return (
     <AppShell>
