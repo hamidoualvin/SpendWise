@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, WithId } from '@/lib/types';
 
 
 export function AiInsights() {
@@ -34,9 +34,9 @@ export function AiInsights() {
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user?.uid, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
-  const { data: transactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: transactions } = useCollection<WithId<Transaction>>(transactionsQuery);
 
   const handleGenerateInsights = async () => {
     if (!transactions) {
@@ -47,7 +47,7 @@ export function AiInsights() {
     setResult(null);
     try {
       const spendingData = JSON.stringify(
-        transactions.map(({ userId, accountId, categoryId, createdAt, ...rest }) => ({
+        transactions.map(({ id, userId, accountId, categoryId, createdAt, ...rest }) => ({
           ...rest,
           date: rest.date.toDate().toISOString().split('T')[0],
         }))

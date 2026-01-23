@@ -30,7 +30,7 @@ export function BudgetStatus() {
       where('userId', '==', user.uid),
       where('month', '==', currentMonth)
     );
-  }, [firestore, user?.uid, currentMonth, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid, currentMonth]);
 
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
@@ -39,15 +39,15 @@ export function BudgetStatus() {
       where('userId', '==', user.uid)
       // We'll filter by date locally for simplicity, but for large datasets, add a month filter here too.
     );
-  }, [firestore, user?.uid, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const categoriesQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
-  const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: budgets, isLoading: isLoadingBudgets } = useCollection<WithId<Budget>>(budgetsQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
   const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {

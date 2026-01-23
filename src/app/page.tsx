@@ -11,7 +11,7 @@ import { Landmark, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 // imports for data fetching
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Account, Transaction } from '@/lib/types';
+import type { Account, Transaction, WithId } from '@/lib/types';
 import { startOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
@@ -21,15 +21,15 @@ export default function DashboardPage() {
   const accountsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [user?.uid, firestore, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'transactions'), where('userId', '==', user.uid));
-  }, [user?.uid, firestore, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
   
-  const { data: accounts, isLoading: isLoadingAccounts } = useCollection<Account>(accountsQuery);
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: accounts, isLoading: isLoadingAccounts } = useCollection<WithId<Account>>(accountsQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
 
   const { totalBalance, totalIncome, totalExpenses } = React.useMemo(() => {
     if (!accounts || !transactions) {
@@ -47,14 +47,15 @@ export default function DashboardPage() {
     let allTimeExpenses = 0;
 
     transactions.forEach(t => {
+      const transactionDate = t.date.toDate();
       if (t.type === 'income') {
         allTimeIncome += t.amountCents;
-        if (t.date.toDate() >= currentMonthStart) {
+        if (transactionDate >= currentMonthStart) {
           totalIncome += t.amountCents;
         }
       } else {
         allTimeExpenses += t.amountCents;
-        if (t.date.toDate() >= currentMonthStart) {
+        if (transactionDate >= currentMonthStart) {
           totalExpenses += t.amountCents;
         }
       }

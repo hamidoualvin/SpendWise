@@ -88,12 +88,12 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
         where('userId', '==', user.uid),
         where('type', '==', type)
     );
-  }, [firestore, user?.uid, type, isUserLoading]);
+  }, [firestore, isUserLoading, user?.uid, type]);
 
   const accountsQuery = useMemoFirebase(() => {
     if (isUserLoading || !user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid, isUserLoading]);
+  }, [firestore, isUserLoading, user?.uid]);
 
   const { data: categories } = useCollection<WithId<Category>>(categoriesQuery);
   const { data: accounts } = useCollection<WithId<Account>>(accountsQuery);

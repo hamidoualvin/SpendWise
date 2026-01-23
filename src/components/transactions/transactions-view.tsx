@@ -37,14 +37,14 @@ export function TransactionsView() {
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user?.uid, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const categoriesQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user?.uid, isUserLoadingAuth]);
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
   const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {
