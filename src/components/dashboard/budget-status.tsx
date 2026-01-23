@@ -13,7 +13,7 @@ import { CategoryIcon } from '@/components/icons/category-icon';
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Transaction, Category, Budget } from '@/lib/types';
+import type { Transaction, Category, Budget, WithId } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { getMonth, getYear } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
@@ -24,31 +24,31 @@ export function BudgetStatus() {
   const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
   const budgetsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'budgets'),
       where('userId', '==', user.uid),
       where('month', '==', currentMonth)
     );
-  }, [firestore, user, currentMonth]);
+  }, [firestore, user?.uid, currentMonth]);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid)
       // We'll filter by date locally for simplicity, but for large datasets, add a month filter here too.
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
-  const { data: categories, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {
     if (!categories) return new Map();
@@ -132,5 +132,3 @@ export function BudgetStatus() {
     </Card>
   );
 }
-
-    

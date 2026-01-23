@@ -82,18 +82,18 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
   const type = form.watch('type');
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
         collection(firestore, 'categories'), 
         where('userId', '==', user.uid),
         where('type', '==', type)
     );
-  }, [firestore, user, type]);
+  }, [firestore, user?.uid, type]);
 
   const accountsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: categories } = useCollection<WithId<Category>>(categoriesQuery);
   const { data: accounts } = useCollection<WithId<Account>>(accountsQuery);
@@ -308,5 +308,3 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
     </Dialog>
   );
 }
-
-    

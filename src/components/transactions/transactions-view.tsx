@@ -23,7 +23,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Transaction, Category } from '@/lib/types';
+import type { Transaction, Category, WithId } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 
 export function TransactionsView() {
@@ -31,21 +31,21 @@ export function TransactionsView() {
   const firestore = useFirestore();
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
-  const { data: categories, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {
     if (!categories) return new Map();

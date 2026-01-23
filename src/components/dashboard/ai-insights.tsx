@@ -28,13 +28,13 @@ export function AiInsights() {
   const firestore = useFirestore();
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid),
       orderBy('date', 'desc')
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: transactions } = useCollection<Transaction>(transactionsQuery);
 
@@ -127,5 +127,3 @@ export function AiInsights() {
     </Card>
   );
 }
-
-    

@@ -28,26 +28,26 @@ export default function BudgetsPage() {
   const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
   const budgetsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'budgets'),
       where('userId', '==', user.uid),
       where('month', '==', currentMonth)
     );
-  }, [firestore, user, currentMonth]);
+  }, [firestore, user?.uid, currentMonth]);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid)
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
   
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: budgets, isLoading: isLoadingBudgets } = useCollection<Budget>(budgetsQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
@@ -169,5 +169,3 @@ export default function BudgetsPage() {
     </AppShell>
   );
 }
-
-    

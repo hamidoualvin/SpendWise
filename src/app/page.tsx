@@ -19,14 +19,14 @@ export default function DashboardPage() {
   const firestore = useFirestore();
 
   const accountsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [user, firestore]);
+  }, [user?.uid, firestore]);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'transactions'), where('userId', '==', user.uid));
-  }, [user, firestore]);
+  }, [user?.uid, firestore]);
   
   const { data: accounts, isLoading: isLoadingAccounts } = useCollection<Account>(accountsQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
