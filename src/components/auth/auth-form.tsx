@@ -88,6 +88,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           displayName: displayName,
           email: user.email,
           createdAt: serverTimestamp(),
+          defaultCurrency: 'USD',
         }, {});
 
       } else {
@@ -120,6 +121,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         email: user.email,
         photoURL: user.photoURL,
         createdAt: serverTimestamp(),
+        defaultCurrency: 'USD',
       }, { merge: true }); // Merge to avoid overwriting on subsequent logins
 
       router.push('/');

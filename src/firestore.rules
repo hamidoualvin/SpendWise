@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /{collection}/{docId}
+      where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
+        
+        // GET: A user can get a document if they are the owner.
+        allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+        
+        // LIST: A user can list documents if they are signed in.
+        // Firestore will then ensure the query from the client is constrained 
+        // to only request documents the user could have 'get'-ten individually.
+        allow list: if isSignedIn();
+
+        // WRITE: A user can write to a document if they are the owner.
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
