@@ -7,18 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // A user can read/write their own user document
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Generic rules for user-owned collections.
-    // For `list` operations, this requires the query to contain a `where('userId', '==', request.auth.uid)` clause.
     match /{collection}/{docId}
       where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
-        allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }
