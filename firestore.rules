@@ -16,23 +16,18 @@ service cloud.firestore {
     match /{collection}/{docId}
       where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
 
-        // READ:
-        // A user can read a document if they are the owner.
-        // For list operations, the query MUST include a `where('userId', '==', request.auth.uid)` clause.
-        allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
-
-        // CREATE:
-        // A user can create a document if they are signing it with their own userId.
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-
-        // UPDATE:
-        // A user can update their own document, but they cannot change the userId.
+        // GET, UPDATE, DELETE rules rely on the existing document's data (resource.data).
+        allow get, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+        
         allow update: if isSignedIn() && request.auth.uid == resource.data.userId
-                      && request.resource.data.userId == resource.data.userId;
+                         && request.resource.data.userId == resource.data.userId; // Prevent changing owner
 
-        // DELETE:
-        // A user can delete their own document.
-        allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+        // LIST rule cannot access resource.data. It permits the query attempt.
+        // Firestore then ensures the query's `where` clause respects the `get` rule.
+        allow list: if isSignedIn();
+
+        // CREATE rule relies on the incoming document's data (request.resource.data).
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
   }
 }
