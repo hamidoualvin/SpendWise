@@ -1,388 +1,230 @@
 {
   "entities": {
     "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
       "description": "Represents a user of the SpendWise application.",
       "properties": {
-        "displayName": {
+        "id": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "Unique identifier for the User entity."
         },
         "email": {
           "type": "string",
-          "description": "The user's email address.",
+          "description": "Email address of the user.",
           "format": "email"
         },
-        "photoURL": {
+        "name": {
           "type": "string",
-          "description": "URL of the user's profile photo (optional).",
-          "format": "uri"
-        },
-        "defaultCurrency": {
-          "type": "string",
-          "description": "The user's default currency (e.g., 'USD', 'EUR')."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created.",
-          "format": "date-time"
+          "description": "Full name of the user."
         }
       },
       "required": [
-        "displayName",
+        "id",
         "email",
-        "createdAt"
+        "name"
       ]
     },
-    "Account": {
-      "title": "Account",
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
       "type": "object",
-      "description": "Represents a user's account (e.g., 'Cash', 'Bank').",
+      "description": "Represents an expense record.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
         "userId": {
           "type": "string",
-          "description": "Reference to User."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the account."
-        },
-        "currency": {
-          "type": "string",
-          "description": "The currency of the account."
-        },
-        "initialBalanceCents": {
-          "type": "number",
-          "description": "The initial balance of the account in cents."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the account was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "name",
-        "currency",
-        "initialBalanceCents",
-        "createdAt"
-      ]
-    },
-    "Category": {
-      "title": "Category",
-      "type": "object",
-      "description": "Represents a spending category (e.g., 'Food', 'Transportation').",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to User."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the category."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type of the category ('expense' or 'income')."
-        },
-        "icon": {
-          "type": "string",
-          "description": "Icon associated with the category (optional)."
-        },
-        "color": {
-          "type": "string",
-          "description": "Color associated with the category (optional)."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the category was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "name",
-        "type",
-        "createdAt"
-      ]
-    },
-    "Transaction": {
-      "title": "Transaction",
-      "type": "object",
-      "description": "Represents a financial transaction.",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to User."
-        },
-        "accountId": {
-          "type": "string",
-          "description": "Reference to Account."
+          "description": "Reference to User. (Relationship: User 1:N Expense)"
         },
         "categoryId": {
           "type": "string",
-          "description": "Reference to Category."
+          "description": "Reference to Category. (Relationship: Category 1:N Expense)"
         },
-        "type": {
-          "type": "string",
-          "description": "The type of transaction ('expense' or 'income')."
-        },
-        "amountCents": {
+        "amount": {
           "type": "number",
-          "description": "The transaction amount in cents."
-        },
-        "currency": {
-          "type": "string",
-          "description": "The currency of the transaction."
+          "description": "Amount of the expense."
         },
         "date": {
           "type": "string",
-          "description": "The effective date of the transaction.",
+          "description": "Date of the expense.",
           "format": "date-time"
         },
-        "note": {
+        "description": {
           "type": "string",
-          "description": "Optional note for the transaction."
-        },
-        "tags": {
-          "type": "array",
-          "description": "Optional array of tags associated with the transaction.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "source": {
-          "type": "string",
-          "description": "The source of the transaction ('manual', 'import', 'recurring') (optional)."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the transaction was created.",
-          "format": "date-time"
+          "description": "Description of the expense."
         }
       },
       "required": [
+        "id",
         "userId",
-        "accountId",
         "categoryId",
-        "type",
-        "amountCents",
-        "currency",
+        "amount",
         "date",
-        "createdAt"
+        "description"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a spending category.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the category (e.g., Food, Transportation)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the category."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "description"
       ]
     },
     "Budget": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Budget",
       "type": "object",
-      "description": "Represents a monthly budget goal for a specific category.",
+      "description": "Represents a budget goal for a specific category.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Budget entity."
+        },
         "userId": {
           "type": "string",
-          "description": "Reference to User."
-        },
-        "month": {
-          "type": "string",
-          "description": "The month for the budget (YYYY-MM)."
+          "description": "Reference to User. (Relationship: User 1:N Budget)"
         },
         "categoryId": {
           "type": "string",
-          "description": "Reference to Category."
+          "description": "Reference to Category. (Relationship: Category 1:N Budget)"
         },
-        "limitCents": {
+        "amount": {
           "type": "number",
-          "description": "The budget limit in cents."
+          "description": "Budgeted amount for the category."
         },
-        "currency": {
+        "startDate": {
           "type": "string",
-          "description": "The currency of the budget."
+          "description": "Starting date for the budget period.",
+          "format": "date-time"
         },
-        "createdAt": {
+        "endDate": {
           "type": "string",
-          "description": "Timestamp indicating when the budget was created.",
+          "description": "Ending date for the budget period.",
           "format": "date-time"
         }
       },
       "required": [
+        "id",
         "userId",
-        "month",
         "categoryId",
-        "limitCents",
-        "currency",
-        "createdAt"
-      ]
-    },
-    "RecurringRule": {
-      "title": "RecurringRule",
-      "type": "object",
-      "description": "Represents a rule for recurring transactions.",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to User."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type of transaction ('expense' or 'income')."
-        },
-        "accountId": {
-          "type": "string",
-          "description": "Reference to Account."
-        },
-        "categoryId": {
-          "type": "string",
-          "description": "Reference to Category."
-        },
-        "amountCents": {
-          "type": "number",
-          "description": "The transaction amount in cents."
-        },
-        "currency": {
-          "type": "string",
-          "description": "The currency of the transaction."
-        },
-        "frequency": {
-          "type": "string",
-          "description": "The frequency of the recurring rule ('weekly', 'monthly', 'yearly')."
-        },
-        "dayOfMonth": {
-          "type": "number",
-          "description": "The day of the month for monthly recurring rules (optional)."
-        },
-        "dayOfWeek": {
-          "type": "number",
-          "description": "The day of the week for weekly recurring rules (optional)."
-        },
-        "nextRunAt": {
-          "type": "string",
-          "description": "Timestamp indicating the next run time for the rule.",
-          "format": "date-time"
-        },
-        "active": {
-          "type": "boolean",
-          "description": "Indicates whether the recurring rule is active."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the recurring rule was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "type",
-        "accountId",
-        "categoryId",
-        "amountCents",
-        "currency",
-        "frequency",
-        "nextRunAt",
-        "active",
-        "createdAt"
-      ]
-    },
-    "InsightsCache": {
-      "title": "InsightsCache",
-      "type": "object",
-      "description": "Represents a cache of generated spending insights.",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to User."
-        },
-        "period": {
-          "type": "string",
-          "description": "The period for which the insights were generated (e.g., 'YYYY-MM', 'last_30_days')."
-        },
-        "summary": {
-          "type": "string",
-          "description": "A summary of the spending insights."
-        },
-        "bullets": {
-          "type": "array",
-          "description": "An array of bullet points highlighting key insights.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "metrics": {
-          "type": "string",
-          "description": "A map of key metrics related to the insights (e.g., 'topCategory', 'spendTotalCents')."
-        },
-        "generatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the insights were generated.",
-          "format": "date-time"
-        },
-        "ttlExpiresAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the cache entry should expire.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "period",
-        "summary",
-        "bullets",
-        "metrics",
-        "generatedAt",
-        "ttlExpiresAt"
+        "amount",
+        "startDate",
+        "endDate"
       ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "google.com"
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/User"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.  Uses path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
       },
-      "description": "Stores user profile information. Only the authenticated user can read or write their own document."
-    },
-    "/accounts/{accountId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Account"
+      {
+        "path": "/users/{userId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores expense records for each user. Uses path-based ownership. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier for the expense record."
+            }
+          ]
+        }
       },
-      "description": "Stores user account information. Includes denormalized 'userId' for authorization independence."
-    },
-    "/categories/{categoryId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Category"
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores expense categories for each user. Uses path-based ownership. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the category."
+            }
+          ]
+        }
       },
-      "description": "Stores user-defined categories. Includes denormalized 'userId' for authorization independence."
-    },
-    "/transactions/{transactionId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Transaction"
-      },
-      "description": "Stores transaction data. Includes denormalized 'userId' for authorization independence."
-    },
-    "/budgets/{budgetId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Budget"
-      },
-      "description": "Stores budget information. Includes denormalized 'userId' for authorization independence."
-    },
-    "/recurringRules/{ruleId}": {
-      "schema": {
-        "$ref": "#/backend/entities/RecurringRule"
-      },
-      "description": "Stores recurring rule definitions. Includes denormalized 'userId' for authorization independence."
-    },
-    "/insightsCache/{cacheId}": {
-      "schema": {
-        "$ref": "#/backend/entities/InsightsCache"
-      },
-      "description": "Stores cached insights. Includes denormalized 'userId' for authorization independence."
-    }
+      {
+        "path": "/users/{userId}/budgets/{budgetId}",
+        "definition": {
+          "entityName": "Budget",
+          "schema": {
+            "$ref": "#/backend/entities/Budget"
+          },
+          "description": "Stores budget goals for each user, per category. Uses path-based ownership. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "budgetId",
+              "description": "The unique identifier for the budget goal."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data, expenses, categories, and budgets are organized under user-specific collections, promoting clear ownership and simplifying security rules. Authorization independence is achieved by storing all relevant authorization data directly within the documents, eliminating the need for `get()` calls in security rules.  This is particularly important for collections like `expenses` and `budgets`, which, while referencing other collections, maintain a direct ownership relationship with the user. The structure facilitates secure list operations by isolating data based on ownership and type, allowing for straightforward filtering in security rules."
   }
 }
-
-    
