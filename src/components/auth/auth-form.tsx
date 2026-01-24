@@ -6,14 +6,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
 import { doc, serverTimestamp } from 'firebase/firestore';
-import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { useAuth, useFirestore, setDocumentNonBlocking, initiateEmailSignUp, initiateEmailSignIn } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +35,7 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Logo } from '../icons/logo';
+import { useUser } from '@/firebase';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -62,6 +61,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isGoogleLoading, setGoogleIsLoading] = React.useState(false);
 
+  const { user, isUserLoading } = useUser();
+
   const schema = mode === 'signin' ? signInSchema : signUpSchema;
 
   const form = useForm<AuthFormValues>({
@@ -72,29 +73,21 @@ export function AuthForm({ mode }: AuthFormProps) {
     },
   });
 
+  React.useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push('/');
+    }
+  }, [user, isUserLoading, router]);
+
   const onSubmit = async (data: AuthFormValues) => {
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        const user = userCredential.user;
-        const displayName = user.email!.split('@')[0];
-
-        // Update auth profile and create user document in Firestore
-        await updateProfile(user, { displayName });
-        
-        const userDocRef = doc(firestore, 'users', user.uid);
-        setDocumentNonBlocking(userDocRef, {
-          displayName: displayName,
-          email: user.email,
-          createdAt: serverTimestamp(),
-          defaultCurrency: 'USD',
-        }, {});
-
+        initiateEmailSignUp(auth, data.email, data.password);
       } else {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
+        initiateEmailSignIn(auth, data.email, data.password);
       }
-      router.push('/');
+      // Non-blocking, so we don't await. Let the `useUser` hook handle the redirect.
     } catch (error: any) {
       console.error(error);
       toast({
@@ -103,7 +96,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         description: error.message || 'An unexpected error occurred.',
       });
     } finally {
-      setIsLoading(false);
+      // Don't set isLoading to false immediately in non-blocking mode,
+      // as the auth state change will trigger the redirect.
+      // We can add a timeout or rely on the redirect.
     }
   };
 
@@ -114,7 +109,6 @@ export function AuthForm({ mode }: AuthFormProps) {
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
-      // Create or update user document in Firestore
       const userDocRef = doc(firestore, 'users', user.uid);
       setDocumentNonBlocking(userDocRef, {
         displayName: user.displayName,
@@ -122,9 +116,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         photoURL: user.photoURL,
         createdAt: serverTimestamp(),
         defaultCurrency: 'USD',
-      }, { merge: true }); // Merge to avoid overwriting on subsequent logins
+      }, { merge: true });
 
-      router.push('/');
+      // The useUser hook will handle the redirect
     } catch (error: any) {
       console.error(error);
       toast({
@@ -212,7 +206,6 @@ export function AuthForm({ mode }: AuthFormProps) {
           {isGoogleLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            // Simple SVG for Google icon to avoid adding a library
             <svg
               className="mr-2 h-4 w-4"
               aria-hidden="true"
