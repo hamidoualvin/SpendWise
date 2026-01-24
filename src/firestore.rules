@@ -7,14 +7,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    match /{collection}/{docId}
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/{collection}/{docId}
       where collection in ['accounts', 'categories', 'transactions', 'budgets', 'recurringRules', 'insightsCache'] {
-        allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, write: if isOwner(userId);
     }
   }
 }

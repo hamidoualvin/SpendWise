@@ -66,7 +66,7 @@ type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
 
   const form = useForm<TransactionFormValues>({
@@ -82,18 +82,17 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
   const type = form.watch('type');
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (isUserLoading || !user?.uid) return null;
+    if (isUserLoadingAuth || !user?.uid) return null;
     return query(
-        collection(firestore, 'categories'), 
-        where('userId', '==', user.uid),
+        collection(firestore, 'users', user.uid, 'categories'), 
         where('type', '==', type)
     );
-  }, [firestore, isUserLoading, user?.uid, type]);
+  }, [firestore, isUserLoadingAuth, user?.uid, type]);
 
   const accountsQuery = useMemoFirebase(() => {
-    if (isUserLoading || !user?.uid) return null;
-    return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
-  }, [firestore, isUserLoading, user?.uid]);
+    if (isUserLoadingAuth || !user?.uid) return null;
+    return query(collection(firestore, 'users', user.uid, 'accounts'));
+  }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const { data: categories } = useCollection<WithId<Category>>(categoriesQuery);
   const { data: accounts } = useCollection<WithId<Account>>(accountsQuery);
@@ -104,7 +103,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
     const amountCents = Math.round(data.amount * 100);
     const selectedAccount = accounts?.find(a => a.id === data.accountId);
 
-    addDocumentNonBlocking(collection(firestore, 'transactions'), {
+    addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'transactions'), {
         userId: user.uid,
         ...data,
         amountCents: amountCents,

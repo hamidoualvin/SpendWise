@@ -30,23 +30,19 @@ export default function BudgetsPage() {
   const budgetsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(
-      collection(firestore, 'budgets'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'users', user.uid, 'budgets'),
       where('month', '==', currentMonth)
     );
   }, [firestore, isUserLoadingAuth, user?.uid, currentMonth]);
 
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
-    return query(
-      collection(firestore, 'transactions'),
-      where('userId', '==', user.uid)
-    );
+    return query(collection(firestore, 'users', user.uid, 'transactions'));
   }, [firestore, isUserLoadingAuth, user?.uid]);
   
   const categoriesQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'categories'));
   }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const { data: budgets, isLoading: isLoadingBudgets } = useCollection<WithId<Budget>>(budgetsQuery);

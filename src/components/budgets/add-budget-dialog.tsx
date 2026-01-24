@@ -110,7 +110,7 @@ export function AddBudgetDialog({
     }
 
     try {
-        const categoriesCol = collection(firestore, 'categories');
+        const categoriesCol = collection(firestore, 'users', user.uid, 'categories');
         const newCategoryRef = await addDocumentNonBlocking(categoriesCol, {
             userId: user.uid,
             name: data.name,
@@ -124,7 +124,7 @@ export function AddBudgetDialog({
         const limitCents = Math.round(data.limit * 100);
         const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
-        const budgetsCol = collection(firestore, 'budgets');
+        const budgetsCol = collection(firestore, 'users', user.uid, 'budgets');
         await addDocumentNonBlocking(budgetsCol, {
             userId: user.uid,
             categoryId: newCategoryId,
@@ -251,5 +251,3 @@ export function AddBudgetDialog({
     </Dialog>
   );
 }
-
-    

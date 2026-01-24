@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import { CategoryIcon } from '@/components/icons/category-icon';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Transaction, Category, WithId } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
@@ -33,15 +33,14 @@ export function TransactionsView() {
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(
-      collection(firestore, 'transactions'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'users', user.uid, 'transactions'),
       orderBy('date', 'desc')
     );
   }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const categoriesQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'categories'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'categories'));
   }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);

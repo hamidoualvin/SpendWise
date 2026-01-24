@@ -10,7 +10,7 @@ import { Landmark, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 // imports for data fetching
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { Account, Transaction, WithId } from '@/lib/types';
 import { startOfMonth } from 'date-fns';
 
@@ -20,12 +20,12 @@ export default function DashboardPage() {
 
   const accountsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'accounts'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'accounts'));
   }, [firestore, isUserLoadingAuth, user?.uid]);
 
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'transactions'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'transactions'));
   }, [firestore, isUserLoadingAuth, user?.uid]);
   
   const { data: accounts, isLoading: isLoadingAccounts } = useCollection<WithId<Account>>(accountsQuery);

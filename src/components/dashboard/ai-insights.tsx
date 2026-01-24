@@ -15,7 +15,7 @@ import { generateSpendingInsights, GenerateSpendingInsightsOutput } from '@/ai/f
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Transaction, WithId } from '@/lib/types';
 
@@ -30,8 +30,7 @@ export function AiInsights() {
   const transactionsQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(
-      collection(firestore, 'transactions'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'users', user.uid, 'transactions'),
       orderBy('date', 'desc')
     );
   }, [firestore, isUserLoadingAuth, user?.uid]);
