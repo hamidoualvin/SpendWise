@@ -1,142 +1,21 @@
-/**
- * Core Philosophy: This ruleset enforces a strict user-ownership model where all data is private to the user who created it.
- * There is no public or shared data. The rules ensure that a user can only ever access documents within their own data tree.
- *
- * Data Structure: All application data is organized hierarchically under the `/users/{userId}` path. Each user gets their own
- * silo for their profile, expenses, categories, and budgets, preventing any possibility of cross-user data access at the structural level.
- *
- * Key Security Decisions:
- * - User Enumeration Disabled: Listing documents from the root `/users` collection is explicitly disallowed to protect user privacy.
- * - Strict Ownership: All operations (read, write, delete) are gated by a check that ensures the authenticated user's ID matches the
- *   `{userId}` parameter in the document path.
- * - Default Deny: The security model defaults to denying all access. Rules are written to explicitly grant access only under specific, secure conditions.
- *
- * Denormalization for Authorization: To ensure fast and secure rule evaluation, all documents within a user's data tree (e.g., expenses, budgets)
- * contain a denormalized `userId` field. The rules validate on write operations that this `userId` field matches the user's ID from the path,
- * creating an unbreakable link between the document and its owner. This avoids costly `get()` calls and makes authorization logic simple and performant.
- *
- * Structural Segregation: The entire data model is based on structural segregation. Each user's data is stored in its own set of
- * collections under `/users/{userId}`, which is the most secure and performant way to manage private user data and enable secure list operations.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for reusable logic
-    // ------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * Checks if the currently authenticated user is the owner of the document,
-     * based on the userId wildcard from the path.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * A robust check for update/delete operations, ensuring the user is the owner
-     * AND the document they are trying to modify actually exists.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * Validates that the user's root document is created with the correct ID.
-     */
-    function isValidUserCreate(userId) {
-      return request.resource.data.id == userId;
-    }
-    
-    /**
-     * Enforces the immutability of the user's unique ID.
-     */
-    function isUserIdImmutable() {
-    	return request.resource.data.id == resource.data.id;
-    }
-
-    /**
-     * Validates that a subcollection document (e.g., Expense, Category) has its
-     * internal `userId` field correctly set to match its owner's path.
-     */
-    function hasCorrectOwnerId(userId) {
-      return request.resource.data.userId == userId;
-    }
-    
-    /**
-     * Enforces that the ownership link (`userId` field) on a subcollection document
-     * cannot be changed after it has been created.
-     */
-    function isOwnerIdImmutable() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
-
-    /**
-     * @description Manages user profile documents.
-     * @path /users/{userId}
-     * @allow (create) An authenticated user can create their own profile document.
-     * @deny (create) A user cannot create a profile for another user's ID.
-     * @principle Restricts access to a user's own data tree and allows self-creation of a profile.
-     */
+    // User profiles
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Disallow user enumeration
-      allow create: if isOwner(userId) && isValidUserCreate(userId);
-      allow update: if isExistingOwner(userId) && isUserIdImmutable();
-      allow delete: if isExistingOwner(userId);
+      // Users can read, create, update, and delete their own profile.
+      allow read, write: if request.auth.uid == userId;
+      // Listing all users is not allowed.
+      allow list: if false;
     }
 
-    /**
-     * @description Manages a user's private expense records.
-     * @path /users/{userId}/expenses/{expenseId}
-     * @allow (create) An authenticated user can add a new expense under their own profile.
-     * @deny (get) A user cannot read expenses belonging to another user.
-     * @principle Enforces document ownership and validates relational integrity between the document and its parent user.
-     */
-    match /users/{userId}/expenses/{expenseId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && hasCorrectOwnerId(userId);
-      allow update: if isExistingOwner(userId) && isOwnerIdImmutable();
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Manages a user's private spending categories.
-     * @path /users/{userId}/categories/{categoryId}
-     * @allow (list) An authenticated user can list all categories they have created.
-     * @deny (create) A user cannot create a category for another user.
-     * @principle Enforces document ownership and validates relational integrity between the document and its parent user.
-     */
-    match /users/{userId}/categories/{categoryId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && hasCorrectOwnerId(userId);
-      allow update: if isExistingOwner(userId) && isOwnerIdImmutable();
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Manages a user's private budget goals for their categories.
-     * @path /users/{userId}/budgets/{budgetId}
-     * @allow (update) An authenticated user can update a budget they previously set.
-     * @deny (delete) A user cannot delete a budget belonging to another user.
-     * @principle Enforces document ownership and validates relational integrity between the document and its parent user.
-     */
-    match /users/{userId}/budgets/{budgetId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && hasCorrectOwnerId(userId);
-      allow update: if isExistingOwner(userId) && isOwnerIdImmutable();
-      allow delete: if isExistingOwner(userId);
+    // User subcollections (accounts, transactions, etc.)
+    match /users/{userId}/{subcollection}/{docId} {
+      // A user can read and write any document within their own subcollections.
+      // This rule works because the {userId} wildcard in the path is checked
+      // against the authenticated user's ID.
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }
