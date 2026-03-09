@@ -10,17 +10,19 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/components/icons/category-icon';
-import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import type { Transaction, Category, Budget, WithId } from '@/lib/types';
+import type { Budget, WithId } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { getMonth, getYear } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
+import { useDashboardData } from '@/contexts/dashboard-data';
 
 export function BudgetStatus() {
   const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
+  const { transactionsThisMonth, categories, isLoading: isDashboardLoading } = useDashboardData();
+
   const currentMonth = `${getYear(new Date())}-${(getMonth(new Date()) + 1).toString().padStart(2, '0')}`;
 
   const budgetsQuery = useMemoFirebase(() => {
@@ -31,21 +33,7 @@ export function BudgetStatus() {
     );
   }, [firestore, isUserLoadingAuth, user?.uid, currentMonth]);
 
-  const transactionsQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(
-      collection(firestore, 'users', user.uid, 'transactions')
-    );
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-
-  const categoriesQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'users', user.uid, 'categories'));
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-
   const { data: budgets, isLoading: isLoadingBudgets } = useCollection<WithId<Budget>>(budgetsQuery);
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
-  const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
 
   const categoryMap = React.useMemo(() => {
     if (!categories) return new Map();
@@ -53,21 +41,13 @@ export function BudgetStatus() {
   }, [categories]);
 
   const getCategorySpending = (categoryId: string) => {
-    if (!transactions) return 0;
-    return transactions
-      .filter((t) => {
-        const transactionDate = t.date.toDate();
-        return (
-          t.type === 'expense' &&
-          t.categoryId === categoryId &&
-          getYear(transactionDate) === getYear(new Date()) &&
-          getMonth(transactionDate) === getMonth(new Date())
-        );
-      })
+    if (!transactionsThisMonth) return 0;
+    return transactionsThisMonth
+      .filter((t) => t.type === 'expense' && t.categoryId === categoryId)
       .reduce((sum, t) => sum + t.amountCents, 0);
   };
-  
-  const isLoading = isUserLoadingAuth || isLoadingBudgets || isLoadingTransactions || isLoadingCategories;
+
+  const isLoading = isUserLoadingAuth || isLoadingBudgets || isDashboardLoading;
 
   return (
     <Card className="h-full">
@@ -102,11 +82,7 @@ export function BudgetStatus() {
                     <span className="font-medium">{category.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    <span
-                      className={
-                        isOverBudget ? 'font-bold text-destructive' : ''
-                      }
-                    >
+                    <span className={isOverBudget ? 'font-bold text-destructive' : ''}>
                       {formatCurrency(spent, budget.currency)}
                     </span>{' '}
                     / {formatCurrency(budget.limitCents, budget.currency)}
