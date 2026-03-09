@@ -7,39 +7,19 @@ import { BudgetStatus } from '@/components/dashboard/budget-status';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { AiInsights } from '@/components/dashboard/ai-insights';
 import { Landmark, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-
-// imports for data fetching
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
-import type { Account, Transaction, WithId } from '@/lib/types';
+import { DashboardDataProvider, useDashboardData } from '@/contexts/dashboard-data';
 import { startOfMonth } from 'date-fns';
 
-export default function DashboardPage() {
-  const { user, isUserLoading: isUserLoadingAuth } = useUser();
-  const firestore = useFirestore();
-
-  const accountsQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'users', user.uid, 'accounts'));
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-
-  const transactionsQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'users', user.uid, 'transactions'));
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-  
-  const { data: accounts, isLoading: isLoadingAccounts } = useCollection<WithId<Account>>(accountsQuery);
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
+function DashboardContent() {
+  const { transactions, accounts, isLoading } = useDashboardData();
 
   const { totalBalance, totalIncome, totalExpenses } = React.useMemo(() => {
     if (!accounts || !transactions) {
       return { totalBalance: 0, totalIncome: 0, totalExpenses: 0 };
     }
-    
-    const initialBalance = accounts.reduce((sum, acc) => sum + acc.initialBalanceCents, 0);
 
-    const now = new Date();
-    const currentMonthStart = startOfMonth(now);
+    const initialBalance = accounts.reduce((sum, acc) => sum + acc.initialBalanceCents, 0);
+    const currentMonthStart = startOfMonth(new Date());
 
     let totalIncome = 0;
     let totalExpenses = 0;
@@ -50,48 +30,43 @@ export default function DashboardPage() {
       const transactionDate = t.date.toDate();
       if (t.type === 'income') {
         allTimeIncome += t.amountCents;
-        if (transactionDate >= currentMonthStart) {
-          totalIncome += t.amountCents;
-        }
+        if (transactionDate >= currentMonthStart) totalIncome += t.amountCents;
       } else {
         allTimeExpenses += t.amountCents;
-        if (transactionDate >= currentMonthStart) {
-          totalExpenses += t.amountCents;
-        }
+        if (transactionDate >= currentMonthStart) totalExpenses += t.amountCents;
       }
     });
 
-    const totalBalance = initialBalance + allTimeIncome - allTimeExpenses;
-
-    return { totalBalance, totalIncome, totalExpenses };
+    return { totalBalance: initialBalance + allTimeIncome - allTimeExpenses, totalIncome, totalExpenses };
   }, [accounts, transactions]);
-
-  const isLoadingSummary = isUserLoadingAuth || isLoadingAccounts || isLoadingTransactions;
 
   return (
     <AppShell>
       <div className="grid gap-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
-            title="Total Balance"
+            title="Solde total"
             value={totalBalance}
             icon={Landmark}
-            iconColor="text-primary"
-            isLoading={isLoadingSummary}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+            isLoading={isLoading}
           />
           <SummaryCard
-            title="Monthly Income"
+            title="Revenus du mois"
             value={totalIncome}
             icon={ArrowUpCircle}
-            iconColor="text-green-500"
-            isLoading={isLoadingSummary}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+            isLoading={isLoading}
           />
           <SummaryCard
-            title="Monthly Expenses"
+            title="Dépenses du mois"
             value={totalExpenses}
             icon={ArrowDownCircle}
-            iconColor="text-red-500"
-            isLoading={isLoadingSummary}
+            iconColor="text-rose-600"
+            iconBg="bg-rose-50"
+            isLoading={isLoading}
           />
         </div>
 
@@ -107,5 +82,13 @@ export default function DashboardPage() {
         <RecentTransactions />
       </div>
     </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <DashboardDataProvider>
+      <DashboardContent />
+    </DashboardDataProvider>
   );
 }

@@ -2,42 +2,33 @@ import { cn } from '@/lib/utils';
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <svg
-        width="32"
-        height="32"
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="shrink-0 text-primary"
-      >
-        <rect width="32" height="32" rx="8" fill="currentColor" />
-        <path
-          d="M10 16H22"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M16 10V22"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M19 13H18C16.8954 13 16 13.8954 16 15V15C16 16.1046 15.1046 17 14 17H13"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+    <div className={cn('flex items-center gap-3 px-2 py-1', className)}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M9 2C5.134 2 2 5.134 2 9s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7z"
+            stroke="white"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M9 5.5v7M6.5 8h5M6.5 10.5h3.5"
+            stroke="white"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
       <span
         className={cn(
-          'font-headline text-xl font-bold tracking-tight',
-          'duration-200 ease-linear',
+          'font-headline text-lg font-bold tracking-tight text-sidebar-accent-foreground',
           'group-data-[collapsible=icon]/sidebar-wrapper:hidden'
         )}
       >

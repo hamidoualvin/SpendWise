@@ -20,43 +20,20 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { CategoryIcon } from '@/components/icons/category-icon';
 import { cn, formatCurrency } from '@/lib/utils';
-import { useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import type { Transaction, Category, WithId } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
+import { useDashboardData } from '@/contexts/dashboard-data';
 
 export function RecentTransactions() {
-  const { user, isUserLoading: isUserLoadingAuth } = useUser();
-  const firestore = useFirestore();
+  const { transactions, categories, isLoading } = useDashboardData();
 
-  const transactionsQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(
-      collection(firestore, 'users', user.uid, 'transactions'),
-      orderBy('date', 'desc'),
-      limit(5)
-    );
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-
-  const categoriesQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(collection(firestore, 'users', user.uid, 'categories'));
-  }, [firestore, isUserLoadingAuth, user?.uid]);
-
-  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<WithId<Transaction>>(transactionsQuery);
-  const { data: categories, isLoading: isLoadingCategories } = useCollection<WithId<Category>>(categoriesQuery);
+  const recentTransactions = React.useMemo(() => transactions?.slice(0, 5) ?? null, [transactions]);
 
   const categoryMap = React.useMemo(() => {
     if (!categories) return new Map();
     return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
 
-  const getCategoryName = (categoryId: string) => {
-    return categoryMap.get(categoryId)?.name || 'N/A';
-  }
-
-  const isLoading = isUserLoadingAuth || isLoadingTransactions || isLoadingCategories;
+  const getCategoryName = (categoryId: string) => categoryMap.get(categoryId)?.name || 'N/A';
 
   return (
     <Card>
@@ -83,7 +60,7 @@ export function RecentTransactions() {
                     <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                 </TableRow>
             ))}
-            {!isLoading && transactions?.map((transaction) => (
+            {!isLoading && recentTransactions?.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>
                   <div className="font-medium">{transaction.note || 'N/A'}</div>
@@ -103,9 +80,7 @@ export function RecentTransactions() {
                 <TableCell
                   className={cn(
                     'text-right font-medium',
-                    transaction.type === 'income'
-                      ? 'text-green-600'
-                      : 'text-red-600'
+                    transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                   )}
                 >
                   {transaction.type === 'income' ? '+' : '-'}
@@ -113,7 +88,7 @@ export function RecentTransactions() {
                 </TableCell>
               </TableRow>
             ))}
-            {!isLoading && transactions?.length === 0 && (
+            {!isLoading && recentTransactions?.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                         No transactions yet.

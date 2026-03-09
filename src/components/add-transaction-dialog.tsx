@@ -36,7 +36,7 @@ import { Input } from './ui/input';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from './ui/calendar';
 import { format } from 'date-fns';
@@ -51,7 +51,7 @@ const transactionFormSchema = z.object({
     required_error: 'Please select a transaction type.',
   }),
   amount: z.coerce
-    .number({ required_error: 'Please enter an amount.' })
+    .number({ invalid_type_error: 'Please enter an amount.' })
     .positive('Amount must be positive.'),
   note: z.string().min(2, 'Description must be at least 2 characters.'),
   categoryId: z.string({ required_error: 'Please select a category.' }),
@@ -63,28 +63,45 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export function AddTransactionDialog({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(false);
+interface AddTransactionDialogProps {
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function AddTransactionDialog({ children, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddTransactionDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const { toast } = useToast();
   const { user, isUserLoading: isUserLoadingAuth } = useUser();
   const firestore = useFirestore();
+
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) form.reset();
+    if (isControlled) {
+      controlledOnOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
       type: 'expense',
       note: '',
-      amount: '' as any,
       date: new Date(),
     },
   });
-  
+
   const type = form.watch('type');
 
   const categoriesQuery = useMemoFirebase(() => {
     if (isUserLoadingAuth || !user?.uid) return null;
     return query(
-        collection(firestore, 'users', user.uid, 'categories'), 
+        collection(firestore, 'users', user.uid, 'categories'),
         where('type', '==', type)
     );
   }, [firestore, isUserLoadingAuth, user?.uid, type]);
@@ -99,29 +116,29 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
 
   async function onSubmit(data: TransactionFormValues) {
     if (!user) return;
-    
-    const amountCents = Math.round(data.amount * 100);
+
+    const { amount, ...rest } = data;
+    const amountCents = Math.round(amount * 100);
     const selectedAccount = accounts?.find(a => a.id === data.accountId);
 
     addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'transactions'), {
-        userId: user.uid,
-        ...data,
-        amountCents: amountCents,
-        currency: selectedAccount?.currency || 'USD',
-        createdAt: serverTimestamp()
+      userId: user.uid,
+      ...rest,
+      amountCents,
+      currency: selectedAccount?.currency || 'USD',
+      createdAt: serverTimestamp(),
     });
 
     toast({
       title: 'Transaction Added!',
-      description: `${data.note} for $${data.amount} has been successfully recorded.`,
+      description: `${data.note} for $${amount.toFixed(2)} has been successfully recorded.`,
     });
-    setOpen(false);
-    form.reset();
+    handleOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Add a New Transaction</DialogTitle>
@@ -178,6 +195,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                           type="number"
                           placeholder="0.00"
                           {...field}
+                          value={field.value ?? ''}
                           className="pl-7"
                           step="0.01"
                         />
@@ -239,7 +257,7 @@ export function AddTransactionDialog({ children }: { children: React.ReactNode }
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="accountId"
               render={({ field }) => (

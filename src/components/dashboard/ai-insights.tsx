@@ -11,39 +11,66 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Loader2 } from 'lucide-react';
-import { generateSpendingInsights, GenerateSpendingInsightsOutput } from '@/ai/flows/generate-spending-insights';
+import { generateSpendingInsights } from '@/ai/flows/generate-spending-insights';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import type { Transaction, WithId } from '@/lib/types';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import type { InsightsCache } from '@/lib/types';
+import { useDashboardData } from '@/contexts/dashboard-data';
+import { format, startOfMonth } from 'date-fns';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const CHART_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#F97316', '#EC4899'];
 
 export function AiInsights() {
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [result, setResult] = React.useState<GenerateSpendingInsightsOutput | null>(null);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [insightsText, setInsightsText] = React.useState<string | null>(null);
   const { toast } = useToast();
-  const { user, isUserLoading: isUserLoadingAuth } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { transactions, categories, isLoading: isDashboardLoading } = useDashboardData();
 
-  const transactionsQuery = useMemoFirebase(() => {
-    if (isUserLoadingAuth || !user?.uid) return null;
-    return query(
-      collection(firestore, 'users', user.uid, 'transactions'),
-      orderBy('date', 'desc')
-    );
-  }, [firestore, isUserLoadingAuth, user?.uid]);
+  // Check cache on mount
+  React.useEffect(() => {
+    if (isUserLoading || !user?.uid) return;
+    const period = format(new Date(), 'yyyy-MM');
+    const cacheRef = doc(firestore, 'users', user.uid, 'insightsCache', period);
+    getDoc(cacheRef).then(snap => {
+      if (snap.exists()) {
+        const cached = snap.data() as InsightsCache;
+        if (cached.ttlExpiresAt.toDate() > new Date()) {
+          setInsightsText(cached.summary);
+        }
+      }
+    }).catch(() => {/* silently ignore */});
+  }, [user?.uid, isUserLoading, firestore]);
 
-  const { data: transactions } = useCollection<WithId<Transaction>>(transactionsQuery);
+  // Recharts data: expenses by category for current month
+  const chartData = React.useMemo(() => {
+    if (!transactions || !categories) return [];
+    const monthStart = startOfMonth(new Date());
+    const spendingMap = new Map<string, number>();
+    transactions
+      .filter(t => t.type === 'expense' && t.date.toDate() >= monthStart)
+      .forEach(t => {
+        spendingMap.set(t.categoryId, (spendingMap.get(t.categoryId) ?? 0) + t.amountCents);
+      });
+    return Array.from(spendingMap.entries())
+      .map(([categoryId, amountCents]) => ({
+        name: categories.find(c => c.id === categoryId)?.name ?? 'Other',
+        value: Math.round(amountCents / 100),
+      }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [transactions, categories]);
 
   const handleGenerateInsights = async () => {
-    if (!transactions) {
-        toast({ title: "No data", description: "There are no transactions to analyze."});
-        return;
+    if (!transactions || transactions.length === 0) {
+      toast({ title: 'No data', description: 'There are no transactions to analyze.' });
+      return;
     }
-    setIsLoading(true);
-    setResult(null);
+    setIsGenerating(true);
     try {
       const spendingData = JSON.stringify(
         transactions.map(({ id, userId, accountId, categoryId, createdAt, ...rest }) => ({
@@ -51,8 +78,23 @@ export function AiInsights() {
           date: rest.date.toDate().toISOString().split('T')[0],
         }))
       );
-      const insights = await generateSpendingInsights({ spendingData });
-      setResult(insights);
+      const { insights } = await generateSpendingInsights({ spendingData });
+      setInsightsText(insights);
+
+      // Save to cache (TTL = 24 hours)
+      if (user?.uid) {
+        const period = format(new Date(), 'yyyy-MM');
+        const cacheRef = doc(firestore, 'users', user.uid, 'insightsCache', period);
+        await setDoc(cacheRef, {
+          userId: user.uid,
+          period,
+          summary: insights,
+          bullets: [],
+          metrics: {},
+          generatedAt: serverTimestamp(),
+          ttlExpiresAt: Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+        });
+      }
     } catch (error) {
       console.error('Failed to generate insights:', error);
       toast({
@@ -61,9 +103,11 @@ export function AiInsights() {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
+
+  const hasData = !isDashboardLoading && transactions && transactions.length > 0;
 
   return (
     <Card className="h-full">
@@ -73,47 +117,71 @@ export function AiInsights() {
           AI-Powered Insights
         </CardTitle>
         <CardDescription>
-          Let AI analyze your spending and provide you with a visual summary and helpful tips.
+          Visual breakdown of your spending with AI-generated analysis.
         </CardDescription>
       </CardHeader>
       <CardContent className="min-h-[250px]">
-        {isLoading && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-center space-x-2">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <p className="text-muted-foreground">Generating your financial summary...</p>
-            </div>
-            <Skeleton className="h-[200px] w-full" />
-          </div>
-        )}
-        {result && (
-          <div className="grid gap-4 md:grid-cols-2">
+        {isDashboardLoading && <Skeleton className="h-[250px] w-full" />}
+
+        {!isDashboardLoading && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Recharts PieChart — always shown when there's data */}
             <div>
-              <h3 className="font-semibold mb-2">Spending Summary</h3>
-              <p className="text-sm text-muted-foreground">{result.insights}</p>
+              <h3 className="font-semibold mb-2">This Month's Expenses</h3>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {chartData.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [`$${value}`, 'Amount']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+                  No expenses this month.
+                </div>
+              )}
             </div>
+
+            {/* AI text insights */}
             <div>
-              <h3 className="font-semibold mb-2">Visual Breakdown</h3>
-              <img
-                src={result.chartDataUri}
-                alt="Spending chart"
-                className="w-full h-auto rounded-lg border"
-              />
+              <h3 className="font-semibold mb-2">AI Summary</h3>
+              {isGenerating && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing your spending...</span>
+                </div>
+              )}
+              {!isGenerating && insightsText && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{insightsText}</p>
+              )}
+              {!isGenerating && !insightsText && (
+                <p className="text-sm text-muted-foreground">
+                  Click "Generate Insights" to get a personalized AI analysis of your spending habits.
+                </p>
+              )}
             </div>
-          </div>
-        )}
-        {!isLoading && !result && (
-          <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center">
-            <h3 className="text-lg font-semibold">Ready for your insights?</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Click the button below to generate a report of your spending habits.
-            </p>
           </div>
         )}
       </CardContent>
       <CardFooter>
-        <Button onClick={handleGenerateInsights} disabled={isLoading || !transactions || transactions.length === 0}>
-          {isLoading ? (
+        <Button
+          onClick={handleGenerateInsights}
+          disabled={isGenerating || !hasData}
+        >
+          {isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Generating...
