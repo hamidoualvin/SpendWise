@@ -21,7 +21,7 @@ import { useDashboardData } from '@/contexts/dashboard-data';
 import { format, startOfMonth } from 'date-fns';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const CHART_COLORS = ['#3F51B5', '#7E57C2', '#E91E63', '#FF5722', '#4CAF50', '#2196F3', '#FFC107', '#009688'];
+const CHART_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#F97316', '#EC4899'];
 
 export function AiInsights() {
   const [isGenerating, setIsGenerating] = React.useState(false);

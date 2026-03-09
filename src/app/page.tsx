@@ -45,24 +45,27 @@ function DashboardContent() {
       <div className="grid gap-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
-            title="Total Balance"
+            title="Solde total"
             value={totalBalance}
             icon={Landmark}
-            iconColor="text-primary"
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
             isLoading={isLoading}
           />
           <SummaryCard
-            title="Monthly Income"
+            title="Revenus du mois"
             value={totalIncome}
             icon={ArrowUpCircle}
-            iconColor="text-green-500"
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
             isLoading={isLoading}
           />
           <SummaryCard
-            title="Monthly Expenses"
+            title="Dépenses du mois"
             value={totalExpenses}
             icon={ArrowDownCircle}
-            iconColor="text-red-500"
+            iconColor="text-rose-600"
+            iconBg="bg-rose-50"
             isLoading={isLoading}
           />
         </div>

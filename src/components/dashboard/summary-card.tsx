@@ -9,6 +9,7 @@ interface SummaryCardProps {
   value?: number;
   icon: LucideIcon;
   iconColor?: string;
+  iconBg?: string;
   isLoading?: boolean;
 }
 
@@ -16,25 +17,25 @@ export function SummaryCard({
   title,
   value,
   icon: Icon,
-  iconColor,
+  iconColor = 'text-primary',
+  iconBg = 'bg-primary/10',
   isLoading,
 }: SummaryCardProps) {
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn('h-5 w-5 text-muted-foreground', iconColor)} />
+    <Card className="relative overflow-hidden border-border/60 shadow-sm transition-shadow hover:shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', iconBg)}>
+          <Icon className={cn('h-5 w-5', iconColor)} />
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-            <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-8 w-3/4" />
         ) : (
-            <div className="text-2xl font-bold">{formatCurrency(value ?? 0)}</div>
+          <div className="text-2xl font-bold tracking-tight">{formatCurrency(value ?? 0)}</div>
         )}
       </CardContent>
     </Card>
   );
 }
-
-    

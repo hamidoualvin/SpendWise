@@ -152,19 +152,19 @@ function AppHeader() {
   const showAddTransaction = !noAddTransactionPaths.includes(pathname);
 
   return (
-    <header className="flex h-16 w-full items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+    <header className="flex h-16 w-full items-center justify-between gap-4 border-b border-border/60 bg-card/80 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden">
           <Menu />
         </SidebarTrigger>
         <h1 className="font-headline text-lg font-semibold tracking-tight">{title}</h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {showAddTransaction && (
           <div className="hidden md:block">
             <AddTransactionDialog>
-              <Button>
-                <PlusCircle className="mr-2" />
+              <Button size="sm" className="gap-1.5 shadow-sm">
+                <PlusCircle className="h-4 w-4" />
                 Ajouter
               </Button>
             </AddTransactionDialog>
@@ -172,10 +172,10 @@ function AppHeader() {
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10">
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Avatar className="h-9 w-9">
                 <AvatarImage src={user?.photoURL ?? undefined} alt="User Avatar" data-ai-hint="person face" />
-                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">{getInitials(user?.displayName)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>

@@ -85,8 +85,8 @@ export function TransactionsView() {
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} width={60} />
                 <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, '']} />
                 <Legend />
-                <Bar dataKey="Revenus" fill="#4CAF50" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Dépenses" fill="#F44336" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Revenus" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Dépenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

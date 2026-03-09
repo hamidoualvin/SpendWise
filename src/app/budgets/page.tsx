@@ -143,10 +143,10 @@ export default function BudgetsPage() {
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} width={60} />
                   <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, '']} />
                   <Legend />
-                  <Bar dataKey="Budget" fill="#3F51B5" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Budget" fill="#2563EB" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Dépensé" radius={[4, 4, 0, 0]}>
                     {budgetChartData.map((entry, index) => (
-                      <Cell key={index} fill={entry.overBudget ? '#F44336' : '#7E57C2'} />
+                      <Cell key={index} fill={entry.overBudget ? '#EF4444' : '#8B5CF6'} />
                     ))}
                   </Bar>
                 </BarChart>

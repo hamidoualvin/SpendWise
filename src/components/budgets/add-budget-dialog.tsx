@@ -43,7 +43,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, addDocumentNonBlocking, useAuth } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import type { Category, WithId } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { getMonth, getYear } from 'date-fns';
@@ -111,7 +111,7 @@ export function AddBudgetDialog({
 
     try {
         const categoriesCol = collection(firestore, 'users', user.uid, 'categories');
-        const newCategoryRef = await addDocumentNonBlocking(categoriesCol, {
+        const newCategoryRef = await addDoc(categoriesCol, {
             userId: user.uid,
             name: data.name,
             icon: data.icon,
